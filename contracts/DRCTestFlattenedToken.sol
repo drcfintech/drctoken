@@ -364,22 +364,6 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
     function startThirdPhase() public {
         balances[msg.sender] = balances[msg.sender].add(THIRD_SUPPLY);
     }
-    
-    /**
-     * @dev transfer token for a specified address
-     * @param _to The address to transfer to.
-     * @param _value The amount to be transferred.
-     */
-    function transfer(address _to, uint256 _value) public returns (bool) {
-        // Save this for an assertion in the future
-        uint previousBalances = balances[msg.sender] + balances[_to];
-
-        super.transfer(_to, _value);
-        
-        // Asserts are used to use static analysis to find bugs in your code. They should never fail
-        assert(previousBalances == balances[msg.sender] + balances[_to]);
-        return true;
-    }
 
     /**
      * Destroy tokens from other account
