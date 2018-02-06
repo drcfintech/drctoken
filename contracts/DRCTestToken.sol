@@ -53,7 +53,7 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
     require(!frozenAccount[msg.sender]);
     return super.transfer(_to, _value);
   }
-
+  
   /**
    * @dev Transfer tokens from one address to another with checking the frozen status
    * @param _from address The address which you want to send tokens from
@@ -63,6 +63,52 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
   function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
     require(!frozenAccount[_from]);
     return super.transferFrom(_from, _to, _value);
+  }
+
+  /**
+   * @dev transfer token for a specified address with froze status checking
+   * @param _toMulti The addresses to transfer to.
+   * @param _values The array of the amount to be transferred.
+   */
+  function transferMultiAddress(address[] _toMulti, uint256[] _values) public returns (bool) {
+    require(!frozenAccount[msg.sender]);
+    uint256 i = 0;
+    while ( i < _toMulti.length) {
+        require(_toMulti[i] != address(0));
+        require(_values[i] <= balances[msg.sender]);
+
+        // SafeMath.sub will throw if there is not enough balance.
+        balances[msg.sender] = balances[msg.sender].sub(_values[i]);
+        balances[_toMulti[i]] = balances[_toMulti[i]].add(_values[i]);
+        Transfer(msg.sender, _toMulti[i], _values[i]);
+    }
+
+    return true;
+  }
+
+  /**
+   * @dev Transfer tokens from one address to another with checking the frozen status
+   * @param _from address The address which you want to send tokens from
+   * @param _toMulti address[] The addresses which you want to transfer to in boundle
+   * @param _values uint256[] the array of amount of tokens to be transferred
+   */
+  function transferMultiAddressFrom(address _from, address[] _toMulti, uint256[] _values) public returns (bool) {
+    require(!frozenAccount[_from]);
+    
+    uint256 i = 0;
+    while ( i < _toMulti.length) {
+        require(_toMulti[i] != address(0));
+        require(_values[i] <= balances[_from]);
+        require(_values[i] <= allowed[_from][msg.sender]);
+
+        // SafeMath.sub will throw if there is not enough balance.
+        balances[_from] = balances[_from].sub(_values[i]);
+        balances[_toMulti[i]] = balances[_toMulti[i]].add(_values[i]);
+        allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_values[i]);
+        Transfer(_from, _toMulti[i], _values[i]);
+    }
+
+    return true;
   }
   
     /**
