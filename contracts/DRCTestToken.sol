@@ -43,7 +43,6 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
         frozenAccount[target] = freeze;
         FrozenFunds(target, freeze);
     }
-<<<<<<< HEAD
 
   /**
    * @dev transfer token for a specified address with froze status checking
@@ -54,8 +53,6 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
     require(!frozenAccount[msg.sender]);
     return super.transfer(_to, _value);
   }
-=======
->>>>>>> 9728e2baa71bdb310b09dff2830815d1258339e1
 
   /**
    * @dev Transfer tokens from one address to another with checking the frozen status
