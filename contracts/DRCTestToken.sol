@@ -15,41 +15,59 @@ interface tokenRecipient {
 }
 
 contract DRCTestToken is BurnableToken, MintableToken, PausableToken {    
-    string public name = 'DRC Test Token';
-    string public symbol = 'DRCT';
+    string public name = 'DRC Test Token 1';
+    string public symbol = 'DRC1';
     uint8 public decimals = 18;
-    uint public INITIAL_SUPPLY = 150000000;
-    uint public SECOND_SUPPLY = 400000000;
-    uint public THIRD_SUPPLY = 550000000;
+    uint public INITIAL_SUPPLY = 1000000000000000000000000000;
+
+    // add map for recording the accounts that will not be allowed to transfer tokens
+    mapping (address => bool) public frozenAccount;
+    event FrozenFunds(address target, bool frozen);
 
     /**
      * contruct the token by total amount 
      *
-     * there are 3 phases for releasing the tokens, initial balance is set. 
+     * initial balance is set. 
      */
     function DRCTestToken() public {
-        totalSupply = INITIAL_SUPPLY + SECOND_SUPPLY + THIRD_SUPPLY;
-        balances[msg.sender] = INITIAL_SUPPLY;
+        totalSupply = INITIAL_SUPPLY;
+        balances[msg.sender] = totalSupply;
     }
-
+    
     /**
-     * start the second release phase 
+     * freeze the account's balance 
      *
-     * the second phase will use second supply amount of tokens 
+     * by default all the accounts will not be frozen until set freeze value as true. 
      */
-    function startSecondPhase() public {
-        balances[msg.sender] = balances[msg.sender].add(SECOND_SUPPLY);
+    function freezeAccount(address target, bool freeze) onlyOwner public {
+        frozenAccount[target] = freeze;
+        FrozenFunds(target, freeze);
     }
+<<<<<<< HEAD
 
-    /**
-     * start the third release phase 
-     *
-     * the third phase will use third supply amount of tokens 
-     */
-    function startThirdPhase() public {
-        balances[msg.sender] = balances[msg.sender].add(THIRD_SUPPLY);
-    }
+  /**
+   * @dev transfer token for a specified address with froze status checking
+   * @param _to The address to transfer to.
+   * @param _value The amount to be transferred.
+   */
+  function transfer(address _to, uint256 _value) public returns (bool) {
+    require(!frozenAccount[msg.sender]);
+    return super.transfer(_to, _value);
+  }
+=======
+>>>>>>> 9728e2baa71bdb310b09dff2830815d1258339e1
 
+  /**
+   * @dev Transfer tokens from one address to another with checking the frozen status
+   * @param _from address The address which you want to send tokens from
+   * @param _to address The address which you want to transfer to
+   * @param _value uint256 the amount of tokens to be transferred
+   */
+  function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
+    require(!frozenAccount[_from]);
+    return super.transferFrom(_from, _to, _value);
+  }
+  
     /**
      * Destroy tokens from other account
      *
