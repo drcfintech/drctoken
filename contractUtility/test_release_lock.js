@@ -29,7 +29,7 @@ var drctokenInstance = loadContract(abi_file_drc_token, drc_token_contract_addre
 var drctokenOrigOwner = "0xAe995911A6E29342a115DFC354501F3465017c4E";
 var drctokenOwner = drctokenInstance.owner.call();
 if (drctokenOwner != release_lock_contract_address) {
-	drctokenInstance.transferOwnership(release_lock_contract_address, {from: drctokenOwner});
+	drctokenInstance.transferOwnership(release_lock_contract_address, {from: drctokenOwner, gasPrice: '3000000000'});
 }
 
 // freeze test accounts
@@ -94,7 +94,7 @@ for (var i = 0; i < len; i++) {
 		drctokenInstance.address, 
 		test_accounts[i], 
 		release_lock_data[i][0],
-		release_lock_data[i][1],
+		release_lock_data[i][1] / 1000,
 		release_lock_data[i][2],
 		{from: releaselockOwner, gasPrice: '3000000000'}
 	);
@@ -111,7 +111,7 @@ for (var i = 0; i < len; i++) {
 		drctokenInstance.address, 
 		test_accounts[i], 
 		release_lock_data_2[i][0],
-		release_lock_data_2[i][1],
+		release_lock_data_2[i][1] / 1000,
 		release_lock_data_2[i][2],
 		{from: releaselockOwner, gasPrice: '3000000000'}
 	);
@@ -129,7 +129,7 @@ for (var i = 0; i < len; i++) {
 		drctokenInstance.address, 
 		test_accounts[i], 
 		release_lock_data_3[i][0],
-		release_lock_data_3[i][1],
+		release_lock_data_3[i][1] / 1000,
 		release_lock_data_3[i][2],
 		{from: releaselockOwner, gasPrice: '3000000000'}
 	);
@@ -144,7 +144,37 @@ for (var i = 0; i < len; i++) {
 	sleep(5000);
 
 	var totalNeedApprove = release_lock_data[i][0] + release_lock_data_2[i][0] + release_lock_data_3[i][0];
-	drctokenInstance.approve(releaselockInstance.address, totalNeedApprove);
+	drctokenInstance.approve(
+		releaselockInstance.address, 
+		totalNeedApprove, 
+		{from: test_accounts[i], gasPrice: '3000000000'}
+	);
 }
+
+sleep(300000);
+
+// start to release the token of those accounts
+releaselockInstance.release(drctokenInstance.address, {from: releaselockOwner, gasPrice: '3000000000'});
+sleep(5000);
+
+var addresses_to_release = ["0x9bC1169Ca09555bf2721A5C9eC6D69c8073bfeB4", 
+					        "0xa23eAEf02F9E0338EEcDa8Fdd0A73aDD781b2A86", 
+					        "0xc449a27B106BE1120Bd1Fd62F8166A2F61588eb9", 
+					        "0xF24AE9CE9B62d83059BD849b9F36d3f4792F5081",
+					        "0xc44B027a94913FB515B19F04CAf515e74AE24FD6",
+					        "0xcb0236B37Ff19001633E38808bd124b60B1fE1ba",
+					        "0x715e632C0FE0d07D02fC3d2Cf630d11e1A45C522",
+					        "0x90FFD070a8333ACB4Ac1b8EBa59a77f9f1001819",
+					        "0x036945CD50df76077cb2D6CF5293B32252BCe247",
+					        "0x23f0227FB09D50477331D2BB8519A38a52B9dFAF",
+					        "0x799759c45265B96cac16b88A7084C068d38aFce9",
+					        "0xA6BFE07B18Df9E42F0086D2FCe9334B701868314"];
+
+releaselockInstance.releaseMultiWithAmount(
+	drctokenInstance.address, 
+	test_accounts, 
+	addresses_to_release,
+	{from: releaselockOwner, gasPrice: '3000000000'}
+);
 
 
