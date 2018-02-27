@@ -21,7 +21,7 @@ var loadContract = function (abi_file_name, address) {
 	var myContractInstance = myContract.at(address);
 
     return myContractInstance;
-}
+};
 
 var releaselockInstance = loadContract(abi_file_release_lock_contract, release_lock_contract_address);
 var drctokenInstance = loadContract(abi_file_drc_token, drc_token_contract_address);
@@ -112,11 +112,17 @@ for (var i = 0; i < len; i++) {
 		test_accounts[i], 
 		release_lock_data_2[i][0],
 		release_lock_data_2[i][1],
-		release_lock_data_2[i][2]
+		release_lock_data_2[i][2],
+		{from: releaselockOwner, gasPrice: '3000000000'}
 	);
 	sleep(5000);
 
-	drctokenInstance.transfer(test_accounts[i], release_lock_data_2[i][0]);
+	drctokenInstance.transferFrom(
+		drctokenOrigOwner,
+		test_accounts[i], 
+		release_lock_data_2[i][0],
+		{from: releaselockOwner, gasPrice: '3000000000'}
+	);
 	sleep(5000);
 
 	releaselockInstance.freeze(
@@ -124,12 +130,21 @@ for (var i = 0; i < len; i++) {
 		test_accounts[i], 
 		release_lock_data_3[i][0],
 		release_lock_data_3[i][1],
-		release_lock_data_3[i][2]
+		release_lock_data_3[i][2],
+		{from: releaselockOwner, gasPrice: '3000000000'}
 	);
 	sleep(5000);
 
-	drctokenInstance.transfer(test_accounts[i], release_lock_data_3[i][0]);
+	drctokenInstance.transfer(
+		drctokenOrigOwner,
+		test_accounts[i], 
+		release_lock_data_3[i][0],
+		{from: releaselockOwner, gasPrice: '3000000000'}
+	);
 	sleep(5000);
+
+	var totalNeedApprove = release_lock_data[i][0] + release_lock_data_2[i][0] + release_lock_data_3[i][0];
+	drctokenInstance.approve(releaselockInstance.address, totalNeedApprove);
 }
 
 
