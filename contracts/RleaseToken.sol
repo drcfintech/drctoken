@@ -15,9 +15,9 @@ contract OwnerContract is Ownable {
     itoken public owned;
     
     /**
-     * bind a contract as its owner
+     * @dev bind a contract as its owner
      *
-     * @_contract the contract address that will be binded by this Owner Contract
+     * @param _contract the contract address that will be binded by this Owner Contract
      */
     function setContract(address _contract) public onlyOwner {
         require(_contract != address(0));
@@ -25,9 +25,9 @@ contract OwnerContract is Ownable {
     }
 
     /**
-     * change the owner of the contract from this contract to another 
+     * @dev change the owner of the contract from this contract to another 
      *
-     * @_newOwner the new contract/account address that will be the new owner
+     * @param _newOwner the new contract/account address that will be the new owner
      */
     function changeContractOwner(address _newOwner) public onlyOwner returns(bool) {
         require(_newOwner != address(0));
@@ -55,9 +55,9 @@ contract ReleaseToken is OwnerContract {
     event ReleaseFunds(address _target, uint256 _amount);
 
     /**
-     * get total remain locked tokens of an account
+     * @dev get total remain locked tokens of an account
      *
-     * @_account the owner of some amount of tokens
+     * @param _account the owner of some amount of tokens
      */
     function getRemainOf(address _account) public view returns (uint256) {
         require(_account != address(0));
@@ -111,12 +111,12 @@ contract ReleaseToken is OwnerContract {
     }
 
     /**
-     * freeze the amount of tokens of an account
+     * @dev freeze the amount of tokens of an account
      *
-     * @_target the owner of some amount of tokens
-     * @_value the amount of the tokens
-     * @_frozenEndTime the end time of the lock period, unit is second
-     * @_releasePeriod the locking period, unit is second
+     * @param _target the owner of some amount of tokens
+     * @param _value the amount of the tokens
+     * @param _frozenEndTime the end time of the lock period, unit is second
+     * @param _releasePeriod the locking period, unit is second
      */
     function freeze(address _target, uint256 _value, uint256 _frozenEndTime, uint256 _releasePeriod) onlyOwner public returns (bool) {
         //require(_tokenAddr != address(0));
@@ -161,13 +161,13 @@ contract ReleaseToken is OwnerContract {
     }
 
     /**
-     * transfer an amount of tokens to an account, and then freeze the tokens
+     * @dev transfer an amount of tokens to an account, and then freeze the tokens
      *
-     * @_tokenOwner the owner of the tokens that need to transfer to an account
-     * @_target the account address that will hold an amount of the tokens
-     * @_value the amount of the tokens which has been transferred
-     * @_frozenEndTime the end time of the lock period, unit is second
-     * @_releasePeriod the locking period, unit is second
+     * @param _tokenOwner the owner of the tokens that need to transfer to an account
+     * @param _target the account address that will hold an amount of the tokens
+     * @param _value the amount of the tokens which has been transferred
+     * @param _frozenEndTime the end time of the lock period, unit is second
+     * @param _releasePeriod the locking period, unit is second
      */
     function transferAndFreeze(address _tokenOwner, address _target, uint256 _value, uint256 _frozenEndTime, uint256 _releasePeriod) onlyOwner public returns (bool) {
         require(_tokenOwner != address(0));
@@ -209,9 +209,9 @@ contract ReleaseToken is OwnerContract {
     }
 
     /**
-     * release the locked tokens owned by an account
+     * @dev release the locked tokens owned by an account
      *
-     * @_target the account address that hold an amount of locked tokens
+     * @param _target the account address that hold an amount of locked tokens
      */
     function releaseAccount(address _target) onlyOwner public returns (bool) {
         //require(_tokenAddr != address(0));
@@ -243,9 +243,9 @@ contract ReleaseToken is OwnerContract {
     }
 
     /**
-     * release the locked tokens owned by a number of accounts
+     * @dev release the locked tokens owned by a number of accounts
      *
-     * @_targets the accounts list that hold an amount of locked tokens 
+     * @param _targets the accounts list that hold an amount of locked tokens 
      */
     function releaseMultiAccounts(address[] _targets) onlyOwner public returns (bool) {
         //require(_tokenAddr != address(0));
@@ -264,10 +264,10 @@ contract ReleaseToken is OwnerContract {
     }
 
     /**
-     * release the locked tokens owned by an account
+     * @dev release the locked tokens owned by an account
      *
-     * @_target the account address that hold an amount of locked tokens
-     * @_dest the secondary address that will hold the released tokens
+     * @param _target the account address that hold an amount of locked tokens
+     * @param _dest the secondary address that will hold the released tokens
      */
     function releaseWithAmount(address _target, address _dest) onlyOwner public returns (bool) {
         //require(_tokenAddr != address(0));
@@ -345,10 +345,10 @@ contract ReleaseToken is OwnerContract {
     }
 
     /**
-     * release the locked tokens owned by an account
+     * @dev release the locked tokens owned by an account
      *
-     * @_targets the account addresses list that hold amounts of locked tokens
-     * @_dests the secondary addresses list that will hold the released tokens for each target account
+     * @param _targets the account addresses list that hold amounts of locked tokens
+     * @param _dests the secondary addresses list that will hold the released tokens for each target account
      */
     function releaseMultiWithAmount(address[] _targets, address[] _dests) onlyOwner public returns (bool) {
         //require(_tokenAddr != address(0));
