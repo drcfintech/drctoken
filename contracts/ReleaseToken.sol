@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.17;
 
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
@@ -59,7 +59,7 @@ contract ReleaseToken is OwnerContract {
      *
      * @param _account the owner of some amount of tokens
      */
-    function getRemainOf(address _account) public view returns (uint256) {
+    function getRemainLockedOf(address _account) public view returns (uint256) {
         require(_account != address(0));
 
         uint256 totalRemain = 0;
