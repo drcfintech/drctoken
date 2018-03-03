@@ -10,8 +10,8 @@ var web3 = new Web3(provider);
 var read_file = require("fs");
 var abi_file_release_lock_contract = process.argv[3];
 var abi_file_drc_token = process.argv[4];
-var release_lock_contract_address = "0x5bE3f0f1A759291DbdC5C550F6FF97Aa5113bEC3";
-var drc_token_contract_address = "0x022196D0670320B211db5A1b1Da4e775A2FB40e6";
+var release_lock_contract_address = web3.toHex("0x639d2A2483061CFC8BD9E6070a93078F50672E44");
+var drc_token_contract_address = web3.toHex("0x32C09E48c7E0946D559F58509381a6b5F5c6A680");
 
 var loadContract = function (abi_file_name, address) {
 	var abi_data = read_file.readFileSync(abi_file_name, "utf-8"); //read abi data file
@@ -26,8 +26,8 @@ var loadContract = function (abi_file_name, address) {
 var releaselockInstance = loadContract(abi_file_release_lock_contract, release_lock_contract_address);
 var drctokenInstance = loadContract(abi_file_drc_token, drc_token_contract_address);
 
-var drctokenOrigOwner = "0xAe995911A6E29342a115DFC354501F3465017c4E";
 var drctokenOwner = drctokenInstance.owner.call();
+
 if (drctokenOwner != release_lock_contract_address) {
 	drctokenInstance.transferOwnership(release_lock_contract_address, {from: drctokenOwner, gasPrice: '3000000000'});
 }
@@ -87,21 +87,26 @@ var release_lock_data_3 = [[500000, (new Date(2018, 2, 27, 1, 10, 0)).getTime(),
 
 var sleep = require('system-sleep');
 var releaselockOwner = releaselockInstance.owner.call();
+web3.personal.unlockAccount(releaselockOwner, '1234567890', 7200);
 
 var len = release_lock_data.length;
 for (var i = 0; i < len; i++) {
+	web3.personal.unlockAccount(test_accounts[i], '1234567890', 7200);
 	releaselockInstance.freeze(
 		drctokenInstance.address, 
 		test_accounts[i], 
 		release_lock_data[i][0],
 		release_lock_data[i][1] / 1000,
 		release_lock_data[i][2],
-		{from: releaselockOwner, gasPrice: '3000000000'}
+		{from: releaselockOwner, gasPrice: '3000000000'},
+		function (err, res) {
+			console.log(res);
+		}
 	);
 	sleep(5000);
 
 	drctokenInstance.transferFrom(
-		drctokenOrigOwner, 
+		releaselockOwner, 
 		test_accounts[i], 
 		release_lock_data[i][0], 
 		{from: releaselockOwner, gasPrice: '3000000000'});
@@ -118,7 +123,7 @@ for (var i = 0; i < len; i++) {
 	sleep(5000);
 
 	drctokenInstance.transferFrom(
-		drctokenOrigOwner,
+		releaselockOwner,
 		test_accounts[i], 
 		release_lock_data_2[i][0],
 		{from: releaselockOwner, gasPrice: '3000000000'}
@@ -136,7 +141,7 @@ for (var i = 0; i < len; i++) {
 	sleep(5000);
 
 	drctokenInstance.transfer(
-		drctokenOrigOwner,
+		releaselockOwner,
 		test_accounts[i], 
 		release_lock_data_3[i][0],
 		{from: releaselockOwner, gasPrice: '3000000000'}
