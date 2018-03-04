@@ -10,28 +10,49 @@ var web3 = new Web3(provider);
 var read_file = require("fs");
 var abi_file_release_lock_contract = process.argv[3];
 var abi_file_drc_token = process.argv[4];
-var release_lock_contract_address = web3.toHex("0x639d2A2483061CFC8BD9E6070a93078F50672E44");
-var drc_token_contract_address = web3.toHex("0x32C09E48c7E0946D559F58509381a6b5F5c6A680");
+var drc_token_contract_address = web3.utils.toHex("0xE8ab8Bc6174F48b9B86372042742Fd362AD29A5A");
+var release_lock_contract_address = web3.utils.toHex("0xca67662e0da8cfc478ea82c1dc226a34ae657744");
 
 var loadContract = function (abi_file_name, address) {
-	var abi_data = read_file.readFileSync(abi_file_name, "utf-8"); //read abi data file
-	console.log(abi_data);
+	var abi_data = JSON.parse(read_file.readFileSync(abi_file_name, "utf-8")); //read abi data file
+	// console.log(abi_data);
 
-    var myContract = web3.eth.contract(abi_data);
-	var myContractInstance = myContract.at(address);
+    var myContract = new web3.eth.Contract(abi_data, address);
+	// var myContractInstance = myContract.at(address);
 
-    return myContractInstance;
+	// return myContractInstance;
+	return myContract;
 };
 
 var releaselockInstance = loadContract(abi_file_release_lock_contract, release_lock_contract_address);
 var drctokenInstance = loadContract(abi_file_drc_token, drc_token_contract_address);
 
-var drctokenOwner = drctokenInstance.owner.call();
+// var drctokenOwner = drctokenInstance.methods.owner().call();
+// console.log(drctokenOwner);
 
-if (drctokenOwner != release_lock_contract_address) {
-	drctokenInstance.transferOwnership(release_lock_contract_address, {from: drctokenOwner, gasPrice: '3000000000'});
+let ownerOf = function(contractInstance) {
+	var result = "";
+	contractInstance.methods.owner().call(function(err, res) {
+		result = res;
+		console.log(result);
+	});
+
+	return result;
 }
+console.log(releaselockInstance.methods);
 
+var drctokenOwner = ownerOf(drctokenInstance);
+var releaseLockOwner = ownerOf(releaselockInstance);
+console.log(releaseLockOwner);
+console.log(drctokenOwner);
+
+
+// if (drctokenOwner != release_lock_contract_address) {
+// 	drctokenInstance.transferOwnership(release_lock_contract_address, {from: drctokenOwner, gasPrice: '3000000000'});
+// }
+// var Personal = require('web3-eth-personal');
+// var personal = new Personal(http_url);
+// web3.eth.personal.unlockAccount(releaseLockOwner, "1234567890", 7200);
 // freeze test accounts
 var test_accounts = ["0xf17f52151EbEF6C7334FAD080c5704D77216b732", 
 					 "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef", 
@@ -86,10 +107,8 @@ var release_lock_data_3 = [[500000, (new Date(2018, 2, 27, 1, 10, 0)).getTime(),
 						   [623000, (new Date(2018, 2, 27, 1, 27, 0)).getTime(), 600]];
 
 var sleep = require('system-sleep');
-var releaselockOwner = releaselockInstance.owner.call();
-web3.personal.unlockAccount(releaselockOwner, '1234567890', 7200);
+// var releaselockOwner = releaselockInstance.owner.call();
 
-var len = release_lock_data.length;
 for (var i = 0; i < len; i++) {
 	web3.personal.unlockAccount(test_accounts[i], '1234567890', 7200);
 	releaselockInstance.freeze(
@@ -156,30 +175,36 @@ for (var i = 0; i < len; i++) {
 	);
 }
 
-sleep(300000);
+// sleep(300000);
 
-// start to release the token of those accounts
-releaselockInstance.release(drctokenInstance.address, {from: releaselockOwner, gasPrice: '3000000000'});
-sleep(5000);
+// // start to release the token of those accounts
+// releaselockInstance.release(drctokenInstance.address, {from: releaselockOwner, gasPrice: '3000000000'});
+// sleep(5000);
 
-var addresses_to_release = ["0x9bC1169Ca09555bf2721A5C9eC6D69c8073bfeB4", 
-					        "0xa23eAEf02F9E0338EEcDa8Fdd0A73aDD781b2A86", 
-					        "0xc449a27B106BE1120Bd1Fd62F8166A2F61588eb9", 
-					        "0xF24AE9CE9B62d83059BD849b9F36d3f4792F5081",
-					        "0xc44B027a94913FB515B19F04CAf515e74AE24FD6",
-					        "0xcb0236B37Ff19001633E38808bd124b60B1fE1ba",
-					        "0x715e632C0FE0d07D02fC3d2Cf630d11e1A45C522",
-					        "0x90FFD070a8333ACB4Ac1b8EBa59a77f9f1001819",
-					        "0x036945CD50df76077cb2D6CF5293B32252BCe247",
-					        "0x23f0227FB09D50477331D2BB8519A38a52B9dFAF",
-					        "0x799759c45265B96cac16b88A7084C068d38aFce9",
-					        "0xA6BFE07B18Df9E42F0086D2FCe9334B701868314"];
+// var addresses_to_release = ["0x9bC1169Ca09555bf2721A5C9eC6D69c8073bfeB4", 
+// 					        "0xa23eAEf02F9E0338EEcDa8Fdd0A73aDD781b2A86", 
+// 					        "0xc449a27B106BE1120Bd1Fd62F8166A2F61588eb9", 
+// 					        "0xF24AE9CE9B62d83059BD849b9F36d3f4792F5081",
+// 					        "0xc44B027a94913FB515B19F04CAf515e74AE24FD6",
+// 					        "0xcb0236B37Ff19001633E38808bd124b60B1fE1ba",
+// 					        "0x715e632C0FE0d07D02fC3d2Cf630d11e1A45C522",
+// 					        "0x90FFD070a8333ACB4Ac1b8EBa59a77f9f1001819",
+// 					        "0x036945CD50df76077cb2D6CF5293B32252BCe247",
+// 					        "0x23f0227FB09D50477331D2BB8519A38a52B9dFAF",
+// 					        "0x799759c45265B96cac16b88A7084C068d38aFce9",
+// 					        "0xA6BFE07B18Df9E42F0086D2FCe9334B701868314"];
 
-releaselockInstance.releaseMultiWithAmount(
-	drctokenInstance.address, 
-	test_accounts, 
-	addresses_to_release,
-	{from: releaselockOwner, gasPrice: '3000000000'}
-);
+// // releaselockInstance.releaseMultiWithAmount(
+// // 	drctokenInstance.address, 
+// // 	test_accounts, 
+// // 	addresses_to_release,
+// // 	{from: releaselockOwner, gasPrice: '3000000000'}
+// // );
 
+// releaselockInstance.releaseWithStage(
+// 	drctokenInstance.address, 
+// 	test_accounts, 
+// 	addresses_to_release,
+// 	{from: releaselockOwner, gasPrice: '3000000000'}
+// );
 
