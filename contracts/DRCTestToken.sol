@@ -1,8 +1,8 @@
 pragma solidity ^0.4.18;
 
-import 'zeppelin-solidity/contracts/token/BurnableToken.sol';
-import 'zeppelin-solidity/contracts/token/MintableToken.sol';
-import 'zeppelin-solidity/contracts/token/PausableToken.sol';
+import 'zeppelin-solidity/contracts/token/ERC20/BurnableToken.sol';
+import 'zeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
+import 'zeppelin-solidity/contracts/token/ERC20/PausableToken.sol';
 // import 'zeppelin-solidity/contracts/token/SafeERC20.sol';
 
 interface tokenRecipient { 
@@ -30,8 +30,8 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * initial balance is set. 
      */
     function DRCTestToken() public {
-        totalSupply = INITIAL_SUPPLY;
-        balances[msg.sender] = totalSupply;
+        totalSupply_ = INITIAL_SUPPLY;
+        balances[msg.sender] = totalSupply_;
     }
     
     /**
@@ -139,7 +139,7 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
         require(_value <= allowed[_from][msg.sender]);    // Check allowance
         balances[_from] = balances[_from].sub(_value);                         // Subtract from the targeted balance
         allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);             // Subtract from the sender's allowance
-        totalSupply = totalSupply.sub(_value);
+        totalSupply_ = totalSupply_.sub(_value);
         Burn(_from, _value);
         return true;
     }
