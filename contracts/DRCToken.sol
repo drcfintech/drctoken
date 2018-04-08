@@ -3,6 +3,7 @@ pragma solidity ^0.4.18;
 import 'zeppelin-solidity/contracts/token/ERC20/BurnableToken.sol';
 import 'zeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
 import 'zeppelin-solidity/contracts/token/ERC20/PausableToken.sol';
+import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
 // import 'zeppelin-solidity/contracts/token/SafeERC20.sol';
 
 interface tokenRecipient { 
@@ -14,7 +15,7 @@ interface tokenRecipient {
     ) external; 
 }
 
-contract DRCTestToken is BurnableToken, MintableToken, PausableToken {    
+contract DRCToken is BurnableToken, MintableToken, PausableToken, Claimable {    
     string public name = "DRC Token";
     string public symbol = "DRCT";
     uint8 public decimals = 18;
@@ -22,7 +23,14 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
 
     // add map for recording the accounts that will not be allowed to transfer tokens
     mapping (address => bool) public frozenAccount;
-    event FrozenFunds(address _target, bool _frozen);
+    // record the amount of tokens that have been frozen
+    mapping (address => uint256) public frozenAmount;
+    event FrozenFunds(address indexed _target, bool _frozen);
+    event FrozenFundsPartialy(address indexed _target, bool _frozen, uint256 _value);
+
+    event BurnFrom(address from, address burner, uint256 value);
+
+    address congress = 0x0;
 
     /**
      * contruct the token by total amount 
@@ -33,15 +41,64 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
         totalSupply_ = INITIAL_SUPPLY;
         balances[msg.sender] = INITIAL_SUPPLY;
     }
+
+    modifier onlyCongress {
+        require(msg.sender == congress);
+        _;
+    }
+
+    /**
+     * @dev initialize a Congress contract address for this token 
+     *
+     * @param _congress address the congress contract address
+     */
+    function initialCongress(address _congress) onlyOwner public {
+        require(_congress != address(0));
+        congress = _congress;
+    }
+
+    /**
+     * @dev set a Congress contract address for this token
+     * must change this address by the last congress contract 
+     *
+     * @param _congress address the congress contract address
+     */
+    function setCongress(address _congress) onlyCongress public {
+        require(_congress != address(0));
+        congress = _congress;
+    }
     
     /**
-     * freeze the account's balance 
+     * @dev freeze the account's balance 
      *
      * by default all the accounts will not be frozen until set freeze value as true. 
+     * 
+     * @param _target address the account should be frozen
+     * @param _freeze bool if true, the account will be frozen
      */
     function freezeAccount(address _target, bool _freeze) onlyOwner public {
+        require(_target != address(0));
+
         frozenAccount[_target] = _freeze;
-        emit FrozenFunds(_target, _freeze);
+        FrozenFunds(_target, _freeze);
+    }
+
+    /**
+     * @dev freeze the account's balance 
+     *
+     * by default all the accounts will not be frozen until set freeze value as true. 
+     * 
+     * @param _target address the account should be frozen
+     * @param _freeze bool if true, the account will be frozen
+     * @param _value uint256 the amount of tokens that will be frozen
+     */
+    function freezeAccountPartialy(address _target, bool _freeze, uint256 _value) onlyOwner public {
+        require(_target != address(0));
+        require(_value <= balances[_target]);
+
+        frozenAccount[_target] = _freeze;
+        frozenAmount[_target] = _value;
+        FrozenFundsPartialy(_target, _freeze, _value);
     }
 
     /**
@@ -50,7 +107,9 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * @param _value The amount to be transferred.
      */
     function transfer(address _to, uint256 _value) public whenNotPaused returns (bool) {
-        require(!frozenAccount[msg.sender]);
+        require(_to != address(0));
+        require(!frozenAccount[msg.sender] || (_value <= balances[msg.sender].sub(frozenAmount[msg.sender])));
+
         return super.transfer(_to, _value);
     }
   
@@ -61,7 +120,10 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * @param _value uint256 the amount of tokens to be transferred
      */
     function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused returns (bool) {
-        require(!frozenAccount[_from]);
+        require(_from != address(0));
+        require(_to != address(0));
+        require(!frozenAccount[_from] || (_value <= balances[_from].sub(frozenAmount[_from])));
+
         return super.transferFrom(_from, _to, _value);
     }
 
@@ -70,25 +132,25 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * @param _toMulti The addresses to transfer to.
      * @param _values The array of the amount to be transferred.
      */
-    function transferMultiAddress(address[] _toMulti, uint256[] _values) public whenNotPaused returns (bool) {
-        require(!frozenAccount[msg.sender]);
-        assert(_toMulti.length == _values.length);
+    // function transferMultiAddress(address[] _toMulti, uint256[] _values) public whenNotPaused returns (bool) {
+    //     require(!frozenAccount[msg.sender]);
+    //     assert(_toMulti.length == _values.length);
 
-        uint256 i = 0;
-        while ( i < _toMulti.length) {
-            require(_toMulti[i] != address(0));
-            require(_values[i] <= balances[msg.sender]);
+    //     uint256 i = 0;
+    //     while (i < _toMulti.length) {
+    //         require(_toMulti[i] != address(0));
+    //         require(_values[i] <= balances[msg.sender]);
 
-            // SafeMath.sub will throw if there is not enough balance.
-            balances[msg.sender] = balances[msg.sender].sub(_values[i]);
-            balances[_toMulti[i]] = balances[_toMulti[i]].add(_values[i]);
-            Transfer(msg.sender, _toMulti[i], _values[i]);
+    //         // SafeMath.sub will throw if there is not enough balance.
+    //         balances[msg.sender] = balances[msg.sender].sub(_values[i]);
+    //         balances[_toMulti[i]] = balances[_toMulti[i]].add(_values[i]);
+    //         Transfer(msg.sender, _toMulti[i], _values[i]);
 
-            i = i.add(1);
-        }
+    //         i = i.add(1);
+    //     }
 
-        return true;
-    }
+    //     return true;
+    // }
 
     /**
      * @dev Transfer tokens from one address to another with checking the frozen status
@@ -96,27 +158,27 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * @param _toMulti address[] The addresses which you want to transfer to in boundle
      * @param _values uint256[] the array of amount of tokens to be transferred
      */
-    function transferMultiAddressFrom(address _from, address[] _toMulti, uint256[] _values) public whenNotPaused returns (bool) {
-        require(!frozenAccount[_from]);
-        assert(_toMulti.length == _values.length);
+    // function transferMultiAddressFrom(address _from, address[] _toMulti, uint256[] _values) public whenNotPaused returns (bool) {
+    //     require(!frozenAccount[_from]);
+    //     assert(_toMulti.length == _values.length);
     
-        uint256 i = 0;
-        while ( i < _toMulti.length) {
-            require(_toMulti[i] != address(0));
-            require(_values[i] <= balances[_from]);
-            require(_values[i] <= allowed[_from][msg.sender]);
+    //     uint256 i = 0;
+    //     while ( i < _toMulti.length) {
+    //         require(_toMulti[i] != address(0));
+    //         require(_values[i] <= balances[_from]);
+    //         require(_values[i] <= allowed[_from][msg.sender]);
 
-            // SafeMath.sub will throw if there is not enough balance.
-            balances[_from] = balances[_from].sub(_values[i]);
-            balances[_toMulti[i]] = balances[_toMulti[i]].add(_values[i]);
-            allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_values[i]);
-            Transfer(_from, _toMulti[i], _values[i]);
+    //         // SafeMath.sub will throw if there is not enough balance.
+    //         balances[_from] = balances[_from].sub(_values[i]);
+    //         balances[_toMulti[i]] = balances[_toMulti[i]].add(_values[i]);
+    //         allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_values[i]);
+    //         Transfer(_from, _toMulti[i], _values[i]);
 
-            i = i.add(1);
-        }
+    //         i = i.add(1);
+    //     }
 
-        return true;
-    }
+    //     return true;
+    // }
   
     /**
      * @dev Burns a specific amount of tokens.
@@ -127,7 +189,7 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
     }
 
     /**
-     * Destroy tokens from other account
+     * @dev Destroy tokens from other account
      *
      * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
      *
@@ -135,12 +197,30 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * @param _value the amount of money to burn
      */
     function burnFrom(address _from, uint256 _value) public whenNotPaused returns (bool success) {
+        require(_from != address(0));
         require(balances[_from] >= _value);                // Check if the targeted balance is enough
         require(_value <= allowed[_from][msg.sender]);    // Check allowance
         balances[_from] = balances[_from].sub(_value);                         // Subtract from the targeted balance
         allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);             // Subtract from the sender's allowance
         totalSupply_ = totalSupply_.sub(_value);
-        Burn(_from, _value);
+        BurnFrom(msg.sender, _from, _value);
+        return true;
+    }
+
+    /**
+     * @dev Destroy tokens from other account by force, only a congress contract can call this function
+     *
+     * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
+     *
+     * @param _from the address of the sender
+     * @param _value the amount of money to burn
+     */
+    function forceBurnFrom(address _from, uint256 _value) onlyCongress whenNotPaused public returns (bool success) {
+        require(_from != address(0));
+        require(balances[_from] >= _value);                // Check if the targeted balance is enough        
+        balances[_from] = balances[_from].sub(_value);                         // Subtract from the targeted balance
+        totalSupply_ = totalSupply_.sub(_value);
+        BurnFrom(msg.sender, _from, _value);
         return true;
     }
 
@@ -151,6 +231,7 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * @return A boolean that indicates if the operation was successful.
      */
     function mint(address _to, uint256 _amount) onlyOwner canMint whenNotPaused public returns (bool) {
+        require(_to != address(0));
         return super.mint(_to, _amount);
     }
 
@@ -161,9 +242,18 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
     function finishMinting() onlyOwner canMint whenNotPaused public returns (bool) {
         return super.finishMinting();
     }
+
+    /**
+     * @dev Function to restart minting functionality. Only congress contract can do this. 
+     * @return True if the operation was successful.
+     */
+    function restartMint() onlyCongress whenNotPaused public returns (bool) {
+        mintingFinished = false;
+        return true;
+    }
     
     /**
-     * Set allowance for other address and notify
+     * @dev Set allowance for other address and notify
      *
      * Allows `_spender` to spend no more than `_value` tokens in your behalf, and then ping the contract about it
      *
@@ -172,6 +262,8 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      * @param _extraData some extra information to send to the approved contract
      */
     function approveAndCall(address _spender, uint256 _value, bytes _extraData) public whenNotPaused returns (bool success) {
+        require(_spender != address(0));
+
         tokenRecipient spender = tokenRecipient(_spender);
         if (approve(_spender, _value)) {
             spender.receiveApproval(msg.sender, _value, this, _extraData);
