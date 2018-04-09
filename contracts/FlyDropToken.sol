@@ -14,17 +14,31 @@ import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 contract FlyDropToken is Claimable {
     using SafeMath for uint256;
 
+    struct ApproveRecord {
+        uint256 value;
+        bytes info;
+    }
+
+    ERC20 internal erc20tk;
+    mapping (address => ApproveRecord) internal AccountRecords;
+
+    event ReceiveApproval(address _from, uint256 _value, address _token, bytes _extraData);
+
+    function receiveApproval(address _from, uint256 _value, address _token, bytes _extraData) public {
+        erc20tk = ERC20(_token);
+        AccountRecords[_from] = ApproveRecord(_value, _extraData);
+        ReceiveApproval(_from, _value, _token, _extraData);
+    } 
+
     /**
      * @dev Send tokens to other multi addresses in one function
      *
-     * @param _tokenAddr address The address of the ERC20 token contract
      * @param _destAddrs address The addresses which you want to send tokens to
      * @param _values uint256 the amounts of tokens to be sent
      */
-    function multiSend(address _tokenAddr, address[] _destAddrs, uint256[] _values) onlyOwner public returns (uint256) {
+    function multiSend(address[] _destAddrs, uint256[] _values) onlyOwner public returns (uint256) {
         require(_destAddrs.length == _values.length);
         
-        ERC20 erc20tk = ERC20(_tokenAddr);
         uint256 i = 0;
         for (; i < _destAddrs.length; i = i.add(1)) {            
             if (!erc20tk.transfer(_destAddrs[i], _values[i])) {
@@ -38,15 +52,13 @@ contract FlyDropToken is Claimable {
     /**
      * @dev Send tokens to other multi addresses in one function
      *
-     * @param _tokenAddr address The address of the ERC20 token contract
      * @param _from address The address which you want to send tokens from
      * @param _destAddrs address The addresses which you want to send tokens to
      * @param _values uint256 the amounts of tokens to be sent
      */
-    function multiSendFrom(address _tokenAddr, address _from, address[] _destAddrs, uint256[] _values) onlyOwner public returns (uint256) {
+    function multiSendFrom(address _from, address[] _destAddrs, uint256[] _values) onlyOwner public returns (uint256) {
         require(_destAddrs.length == _values.length);
         
-        ERC20 erc20tk = ERC20(_tokenAddr);
         uint256 i = 0;
         for (; i < _destAddrs.length; i = i.add(1)) {            
             if (!erc20tk.transferFrom(_from, _destAddrs[i], _values[i])) {
