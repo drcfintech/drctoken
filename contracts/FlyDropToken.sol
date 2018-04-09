@@ -24,6 +24,14 @@ contract FlyDropToken is Claimable {
 
     event ReceiveApproval(address _from, uint256 _value, address _token, bytes _extraData);
 
+    /**
+     * @dev receive approval from an ERC20 token contract, take a record
+     *
+     * @param _from address The address which you want to send tokens from
+     * @param _value uint256 the amounts of tokens to be sent
+     * @param _token address the ERC20 token address
+     * @param _extraData bytes the extra data for the record
+     */
     function receiveApproval(address _from, uint256 _value, address _token, bytes _extraData) public {
         erc20tk = ERC20(_token);
         AccountRecords[_from] = ApproveRecord(_value, _extraData);
@@ -36,7 +44,7 @@ contract FlyDropToken is Claimable {
      * @param _destAddrs address The addresses which you want to send tokens to
      * @param _values uint256 the amounts of tokens to be sent
      */
-    function multiSend(address[] _destAddrs, uint256[] _values) onlyOwner public returns (uint256) {
+    function multiSend(address[] _destAddrs, uint256[] _values) public returns (uint256) {
         require(_destAddrs.length == _values.length);
         
         uint256 i = 0;
