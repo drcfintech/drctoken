@@ -4,6 +4,7 @@ import 'zeppelin-solidity/contracts/token/ERC20/BurnableToken.sol';
 import 'zeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
 import 'zeppelin-solidity/contracts/token/ERC20/PausableToken.sol';
 import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
+import './Autonomy.sol';
 // import 'zeppelin-solidity/contracts/token/SafeERC20.sol';
 
 interface tokenRecipient { 
@@ -15,7 +16,7 @@ interface tokenRecipient {
     ) external; 
 }
 
-contract DRCToken is BurnableToken, MintableToken, PausableToken, Claimable {    
+contract DRCToken is BurnableToken, MintableToken, PausableToken, Claimable, Autonomy {    
     string public name = "DRC Token";
     string public symbol = "DRCT";
     uint8 public decimals = 18;
@@ -30,8 +31,6 @@ contract DRCToken is BurnableToken, MintableToken, PausableToken, Claimable {
 
     event BurnFrom(address from, address burner, uint256 value);
 
-    address congress = 0x0;
-
     /**
      * contruct the token by total amount 
      *
@@ -40,32 +39,6 @@ contract DRCToken is BurnableToken, MintableToken, PausableToken, Claimable {
     function DRCToken() public {
         totalSupply_ = INITIAL_SUPPLY;
         balances[msg.sender] = INITIAL_SUPPLY;
-    }
-
-    modifier onlyCongress {
-        require(msg.sender == congress);
-        _;
-    }
-
-    /**
-     * @dev initialize a Congress contract address for this token 
-     *
-     * @param _congress address the congress contract address
-     */
-    function initialCongress(address _congress) onlyOwner public {
-        require(_congress != address(0));
-        congress = _congress;
-    }
-
-    /**
-     * @dev set a Congress contract address for this token
-     * must change this address by the last congress contract 
-     *
-     * @param _congress address the congress contract address
-     */
-    function setCongress(address _congress) onlyCongress public {
-        require(_congress != address(0));
-        congress = _congress;
     }
     
     /**
@@ -85,20 +58,17 @@ contract DRCToken is BurnableToken, MintableToken, PausableToken, Claimable {
 
     /**
      * @dev freeze the account's balance 
-     *
-     * by default all the accounts will not be frozen until set freeze value as true. 
      * 
      * @param _target address the account should be frozen
-     * @param _freeze bool if true, the account will be frozen
      * @param _value uint256 the amount of tokens that will be frozen
      */
-    function freezeAccountPartialy(address _target, bool _freeze, uint256 _value) onlyOwner public {
+    function freezeAccountPartialy(address _target, uint256 _value) onlyOwner public {
         require(_target != address(0));
         require(_value <= balances[_target]);
 
-        frozenAccount[_target] = _freeze;
+        frozenAccount[_target] = true;
         frozenAmount[_target] = _value;
-        FrozenFundsPartialy(_target, _freeze, _value);
+        FrozenFundsPartialy(_target, true, _value);
     }
 
     /**
