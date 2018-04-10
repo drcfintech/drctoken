@@ -40,8 +40,8 @@ contract ReleaseToken is OwnerContract {
      *
      * @param _contract the contract address that will be binded by this Owner Contract
      */
-    function setContract(address _contract) onlyOwner public {
-        super.setContract(_contract);
+    function bindContract(address _contract) onlyOwner public {
+        super.bindContract(_contract);
         owned = itoken(_contract);
     }
 
