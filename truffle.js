@@ -18,7 +18,7 @@ module.exports = {
       network_id: 3
     },
     rinkeby: {
-      provider: new HDWalletProvider(walletConfig.mnemonic, "https://rinkeby.infura.io/" + infura_apikey, 24),
+      provider: new HDWalletProvider(walletConfig.mnemonic, "https://rinkeby.infura.io/" + infura_apikey),
       network_id: 4
     }
   }
