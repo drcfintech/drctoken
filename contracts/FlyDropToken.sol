@@ -1,4 +1,5 @@
 pragma solidity ^0.4.18;
+pragma experimental ABIEncoderV2;
 
 import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
 import 'zeppelin-solidity/contracts/token/ERC20/ERC20.sol';
