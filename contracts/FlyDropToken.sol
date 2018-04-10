@@ -1,5 +1,4 @@
 pragma solidity ^0.4.18;
-pragma experimental ABIEncoderV2;
 
 import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
 import 'zeppelin-solidity/contracts/token/ERC20/ERC20.sol';
@@ -12,13 +11,8 @@ import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 contract FlyDropToken is Claimable {
     using SafeMath for uint256;
 
-    struct ApproveRecord {
-        uint256 value;
-        bytes info;
-    }
-
     ERC20 internal erc20tk;
-    mapping (address => ApproveRecord) internal accountRecords;
+    bytes[] internal approveRecords;
 
     event ReceiveApproval(address _from, uint256 _value, address _token, bytes _extraData);
 
@@ -32,8 +26,8 @@ contract FlyDropToken is Claimable {
      */
     function receiveApproval(address _from, uint256 _value, address _token, bytes _extraData) public {
         erc20tk = ERC20(_token);
-        require(erc20tk.transferFrom(_from, this, _value)); // transfer tokens to this contract        
-        accountRecords[_from] = ApproveRecord(_value, _extraData);
+        require(erc20tk.transferFrom(_from, this, _value)); // transfer tokens to this contract
+        approveRecords.push(_extraData);
         ReceiveApproval(_from, _value, _token, _extraData);
     } 
 
@@ -79,12 +73,11 @@ contract FlyDropToken is Claimable {
     /**
      * @dev get records about approval
      *
-     * @param _destAddrs address The addresses which you want to send tokens to
-     * @param _values uint256 the amounts of tokens to be sent
+     * @param _ind uint the index of record
      */
-    function multiSend(address _approver) onlyOwner public returns (ApproveRecord) {
-        require(_approver != address(0));
+    function getApproveRecord(uint _ind) onlyOwner public view returns (bytes) {
+        require(_ind < approveRecords.length);
         
-        return accountRecords[_approver];
+        return approveRecords[_ind];
     }
 }
