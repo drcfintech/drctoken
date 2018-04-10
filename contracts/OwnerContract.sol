@@ -1,4 +1,4 @@
-pragma solidity ^0.4.17;
+pragma solidity ^0.4.18;
 
 import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
 
@@ -31,8 +31,19 @@ contract OwnerContract is Claimable {
      * @dev change the owner of the contract from this contract address to the original one. 
      *
      */
-    function transferOwnershipBack() public onlyOwner {
+    function transferOwnershipBack() onlyOwner public {
         ownedContract.transferOwnership(origOwner);
+        ownedContract = Claimable(address(0));
+        origOwner = address(0);
+    }
+
+    /**
+     * @dev change the owner of the contract from this contract address to another one. 
+     *
+     * @param _nextOwner the contract address that will be next Owner of the original Contract
+     */
+    function changeOwnershipto(address _nextOwner)  onlyOwner public {
+        ownedContract.transferOwnership(_nextOwner);
         ownedContract = Claimable(address(0));
         origOwner = address(0);
     }

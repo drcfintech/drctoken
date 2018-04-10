@@ -53,6 +53,7 @@ contract DRCToken is BurnableToken, MintableToken, PausableToken, Claimable, Aut
         require(_target != address(0));
 
         frozenAccount[_target] = _freeze;
+        frozenAmount[_target] = balances[_target];
         FrozenFunds(_target, _freeze);
     }
 

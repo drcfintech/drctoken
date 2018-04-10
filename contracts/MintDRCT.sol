@@ -4,13 +4,14 @@ import 'zeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 import './OwnerContract.sol';
 import './Autonomy.sol';
-import './DRCToken.sol';
+// import './DRCToken.sol';
 
 
 contract MintDRCT is OwnerContract, Autonomy {
     using SafeMath for uint256;
 
     uint256 public TOTAL_SUPPLY_CAP = 1000000000E18;
+    bool public capInitialized = false;
 
     address[] internal mainAccounts = [
         0xaD5CcBE3aaB42812aa05921F0513C509A4fb5b67, // tokensale
@@ -23,6 +24,11 @@ contract MintDRCT is OwnerContract, Autonomy {
 
     mapping (address => uint) internal accountCaps;
 
+    modifier afterCapInit() {
+        require(capInitialized);
+        _;
+    }
+
     /**
      * @dev set capacity limitation for every main accounts
      *
@@ -31,6 +37,8 @@ contract MintDRCT is OwnerContract, Autonomy {
         for (uint i = 0; i < mainAccounts.length; i = i.add(1)) {
             accountCaps[mainAccounts[i]] = TOTAL_SUPPLY_CAP * mainPercentages[i] / 100; 
         }
+
+        capInitialized = true;
 
         return true;
     } 
@@ -41,13 +49,13 @@ contract MintDRCT is OwnerContract, Autonomy {
      * @param _ind uint8 the main account index
      * @param _value uint256 the amounts of tokens to be minted
      */
-    function mintUnderCap(uint _ind, uint256 _value) onlyOwner public returns (bool) {
+    function mintUnderCap(uint _ind, uint256 _value) onlyOwner afterCapInit public returns (bool) {
         require(_ind < mainAccounts.length);
         address accountAddr = mainAccounts[_ind];
-        uint256 accountBalance = DRCToken(ownedContract).balanceOf(accountAddr);
+        uint256 accountBalance = MintableToken(ownedContract).balanceOf(accountAddr);
         require(_value <= accountCaps[accountAddr].sub(accountBalance));
 
-        return DRCToken(ownedContract).mint(accountAddr, _value);
+        return MintableToken(ownedContract).mint(accountAddr, _value);
     }
 
     /**
@@ -55,11 +63,11 @@ contract MintDRCT is OwnerContract, Autonomy {
      *
      * @param _values uint256 the amounts of tokens to be minted
      */
-    function mintAll(uint256[] _values) onlyOwner public returns (bool) {
+    function mintAll(uint256[] _values) onlyOwner afterCapInit public returns (bool) {
         require(_values.length == mainAccounts.length);
 
         bool res = true;
-        for(uint i = 0; i < _values.length; i.add(1)) {
+        for(uint i = 0; i < _values.length; i = i.add(1)) {
             res = mintUnderCap(i, _values[i]) && res;
         }
          
@@ -70,14 +78,15 @@ contract MintDRCT is OwnerContract, Autonomy {
      * @dev Mint DRC Tokens from serveral specific wallet addresses upto cap limitation
      *
      */
-    function mintUptoCap() onlyOwner public returns (bool) {
+    function mintUptoCap() onlyOwner afterCapInit public returns (bool) {
         bool res = true;
-        for(uint i = 0; i < mainAccounts.length; i.add(1)) {
-            require(DRCToken(ownedContract).balanceOf(mainAccounts[i]) == 0);
-            res = DRCToken(ownedContract).mint(mainAccounts[i], accountCaps[mainAccounts[i]]) && res;
+        for(uint i = 0; i < mainAccounts.length; i = i.add(1)) {
+            require(MintableToken(ownedContract).balanceOf(mainAccounts[i]) == 0);
+            res = MintableToken(ownedContract).mint(mainAccounts[i], accountCaps[mainAccounts[i]]) && res;
         }
-         
-        return res;
+
+        require(res);
+        return MintableToken(ownedContract).finishMinting(); // when up to cap limit, then stop minting.
     }
 
     /**
@@ -86,7 +95,7 @@ contract MintDRCT is OwnerContract, Autonomy {
      * @param _ind uint the main account index
      * @param _value uint256 the amounts of tokens to be added to capacity limitation
      */
-    function raiseCap(uint _ind, uint256 _value) onlyCongress public returns (bool) {
+    function raiseCap(uint _ind, uint256 _value) onlyCongress afterCapInit public returns (bool) {
         require(_ind < mainAccounts.length);
         require(_value > 0);
 
@@ -120,7 +129,7 @@ contract MintDRCT is OwnerContract, Autonomy {
      * @param _ind the main account index
      * @param _newAddr address the new main account address
      */
-    function setMainAccount(uint _ind, address _newAddr) public returns (bool) {
+    function setMainAccount(uint _ind, address _newAddr) onlyOwner public returns (bool) {
         require(_ind < mainAccounts.length);
         require(_newAddr != address(0));
 

@@ -11,7 +11,7 @@ import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 contract Autonomy is Ownable {
     address public congress;
 
-    modifier onlyCongress {
+    modifier onlyCongress() {
         require(msg.sender == congress);
         _;
     }
