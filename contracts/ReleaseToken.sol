@@ -160,7 +160,8 @@ contract ReleaseToken is OwnerContract {
 
         uint256 len = frozenAccounts.length;
         
-        for (uint256 i = 0; i < len; i = i.add(1)) {
+        uint256 i = 0;
+        for (; i < len; i = i.add(1)) {
             if (frozenAccounts[i] == _target) {
                 break;
             }            
@@ -172,7 +173,12 @@ contract ReleaseToken is OwnerContract {
         
         // each time the new locked time will be added to the backend
         frozenTimes[_target].push(TimeRec(_value, _value, _frozenEndTime, _frozenEndTime.add(_releasePeriod)));
-        owned.freezeAccountPartialy(_target, _value);
+        if (owned.frozenAccount(_target)) {
+            uint256 preFrozenAmount = owned.frozenAmount(_target);
+            owned.freezeAccountPartialy(_target, _value.add(preFrozenAmount));
+        } else {
+            owned.freezeAccountPartialy(_target, _value);
+        }
         
         return true;
     }
@@ -194,12 +200,15 @@ contract ReleaseToken is OwnerContract {
         // check firstly that the allowance of this contract has been set
         require(owned.allowance(msg.sender, this) > 0);
 
-        // freeze the account at first
+        // now we need transfer the funds before freeze them
+        require(owned.transferFrom(msg.sender, _target, _value));
+
+        // freeze the account after transfering funds
         if (!freeze(_target, _value, _frozenEndTime, _releasePeriod)) {
             return false;
         }
 
-        return (owned.transferFrom(msg.sender, _target, _value));
+        return true;
     }
 
     /**
@@ -225,14 +234,16 @@ contract ReleaseToken is OwnerContract {
                 if (!removeAccount(i)) {
                     return false;
                 }
-                
-                owned.freezeAccount(target, false);
-                //frozenTimes[destAddr][0].endTime = 0;
-                //frozenTimes[destAddr][0].duration = 0;
+
+                uint256 preFrozenAmount = owned.frozenAmount(target);
+                if (preFrozenAmount > releasedAmount) {
+                    owned.freezeAccountPartialy(target, preFrozenAmount.sub(releasedAmount));
+                } else { 
+                    owned.freezeAccount(target, false);
+                }
+               
                 ReleaseFunds(target, releasedAmount);
                 len = len.sub(1);
-                //frozenTimes[destAddr][0].amount = 0;
-                //frozenTimes[destAddr][0].remain = 0;
             } else { 
                 // no account has been removed
                 i = i.add(1);
@@ -270,13 +281,14 @@ contract ReleaseToken is OwnerContract {
                         return false;
                     }
 
-                    owned.freezeAccount(destAddr, false);
-                    // frozenTimes[destAddr][0].endTime = 0;
-                    // frozenTimes[destAddr][0].duration = 0;
+                    uint256 preFrozenAmount = owned.frozenAmount(destAddr);
+                    if (preFrozenAmount > releasedAmount) {
+                        owned.freezeAccountPartialy(destAddr, preFrozenAmount.sub(releasedAmount));
+                    } else { 
+                        owned.freezeAccount(destAddr, false);
+                    }
+                    
                     ReleaseFunds(destAddr, releasedAmount);
-                    // frozenTimes[destAddr][0].amount = 0;
-                    // frozenTimes[destAddr][0].remain = 0;
-
                 }
 
                 // if the account are not locked for once, we will do nothing here
@@ -353,10 +365,16 @@ contract ReleaseToken is OwnerContract {
 
                 // we got some amount need to be released
                 if (preReleaseAmounts[frozenAddr] > 0) {
-                    uint256 preRleasedAmount = preReleaseAmounts[frozenAddr];
+                    uint256 preReleasedAmount = preReleaseAmounts[frozenAddr];
+                    uint256 preFrozenAmount = owned.frozenAmount(frozenAddr);
+                    
                     // set the pre-release amount to 0 for next time
                     preReleaseAmounts[frozenAddr] = 0;
-                    owned.freezeAccountPartialy(frozenAddr, owned.frozenAmount(frozenAddr).sub(preRleasedAmount));
+                    if (preFrozenAmount > preReleasedAmount) {
+                        owned.freezeAccountPartialy(frozenAddr, preFrozenAmount.sub(preReleasedAmount));
+                    } else {
+                        owned.freezeAccount(frozenAddr, false);
+                    }
                     // if (!owned.transferFrom(_target, _dest, preReleaseAmounts[frozenAddr])) {
                     //     return false;
                     // }                    
@@ -364,7 +382,6 @@ contract ReleaseToken is OwnerContract {
 
                 // if all the frozen amounts had been released, then unlock the account finally
                 if (frozenTimes[frozenAddr].length == 0) {
-                    owned.freezeAccount(frozenAddr, false);
                     if (!removeAccount(i)) {
                         return false;
                     }                    
