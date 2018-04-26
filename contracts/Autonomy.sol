@@ -10,6 +10,7 @@ import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
  */
 contract Autonomy is Ownable {
     address public congress;
+    bool init = false;
 
     modifier onlyCongress() {
         require(msg.sender == congress);
@@ -22,8 +23,10 @@ contract Autonomy is Ownable {
      * @param _congress address the congress contract address
      */
     function initialCongress(address _congress) onlyOwner public {
+        require(!init);
         require(_congress != address(0));
         congress = _congress;
+        init = true;
     }
 
     /**
