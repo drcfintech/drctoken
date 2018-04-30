@@ -1,7 +1,7 @@
 library(gmp)
 options(scipen = 100)
 options(digits = 10)
-voiceURL = "E:\\My Documents\\DRC\\worktemp\\发币临时文档\\社区激励代币.csv"
+voiceURL = "C:\\Users\\rcit-001\\Documents\\工作文档\\DRC\\documents\\发币相关\\发币2018-4-23-内部认购.csv"
 input.df = read.csv(voiceURL, header = FALSE, colClasses = 'character')
 input.df[,2] = paste(input.df[,2], "e18", sep = "")
 input.df
@@ -9,12 +9,21 @@ input.df
 len = length(input.df[,2])
 len
 
-m = seq(1, 3451, by = 150)
+interval = 150
+if (len < interval) {
+  m = c(1)
+  n = c(len)
+} else {
+  m = seq(1, len - interval + 1, by = interval)
+  n = c(seq(interval, len, by = interval), len)
+}
 m
-n = c(seq(150, len, by = 150), len)
 n
-for (i in 1:24) {
-    filename = paste("E:\\My Documents\\DRC\\worktemp\\发币临时文档\\addresses0411-2-", as.character(i), ".txt", sep = "")
+
+end = ceiling(len / interval)
+end
+for (i in 1:end) {
+    filename = paste("C:\\Users\\rcit-001\\Documents\\工作文档\\DRC\\documents\\发币相关\\addresses0424-2-", as.character(i), ".txt", sep = "")
     filename
     cat(input.df[,1][m[i]:n[i]], file = filename, sep = ",")
     cat("\n", file = filename, append = TRUE)
