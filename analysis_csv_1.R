@@ -1,8 +1,12 @@
 library(gmp)
+library(date)
 options(scipen = 100)
 options(digits = 10)
-voiceURL = "C:\\Users\\rcit-001\\Documents\\工作文档\\DRC\\documents\\发币相关\\发币2018-4-23-内部认购.csv"
-input.df = read.csv(voiceURL, header = FALSE, colClasses = 'character')
+filePrefix = "E:\\My Documents"
+filePath = "\\DRC\\documents\\鍙戝竵鐩稿叧"
+fileName = "\\鍙戝竵2018-4-29-2.csv"
+fileFullPath = paste(filePrefix, filePath, fileName, sep = "")
+input.df = read.csv(fileFullPath, header = FALSE, colClasses = 'character')
 input.df[,2] = paste(input.df[,2], "e18", sep = "")
 input.df
 
@@ -14,7 +18,7 @@ if (len < interval) {
   m = c(1)
   n = c(len)
 } else {
-  m = seq(1, len - interval + 1, by = interval)
+  m = seq(1, len, by = interval)
   n = c(seq(interval, len, by = interval), len)
 }
 m
@@ -22,21 +26,15 @@ n
 
 end = ceiling(len / interval)
 end
+datetime = format(Sys.Date(), "%Y%m%d")
+datetime
+serialNo = 2
+outputFileName = paste("\\addresses", datetime, "-", serialNo, "-", sep = "")
 for (i in 1:end) {
-    filename = paste("C:\\Users\\rcit-001\\Documents\\工作文档\\DRC\\documents\\发币相关\\addresses0424-2-", as.character(i), ".txt", sep = "")
-    filename
-    cat(input.df[,1][m[i]:n[i]], file = filename, sep = ",")
-    cat("\n", file = filename, append = TRUE)
-    cat(input.df[,2][m[i]:n[i]], file = filename, sep = ",", append = TRUE)
+    outputFile = paste(filePrefix, filePath, outputFileName, as.character(i), ".txt", sep = "")
+    outputFile
+    cat(input.df[,1][m[i]:n[i]], file = outputFile, sep = ",")
+    cat("\n", file = outputFile, append = TRUE)
+    cat(input.df[,2][m[i]:n[i]], file = outputFile, sep = ",", append = TRUE)
 }
 
-filename = "E:\\My Documents\\DRC\\worktemp\\addresses0220-1-2.txt"
-cat(input.df[,1][301:400], file = filename, sep = ",")
-cat("\n", file = filename, append = TRUE)
-cat(input.df[,2][301:400], file = filename, sep = ",", append = TRUE)
-
-filename = "E:\\My Documents\\DRC\\worktemp\\发币临时文档\\addresses0411-1-1.txt"
-
-cat(input.df[,1][1:len], file = filename, sep = ",")
-cat("\n", file = filename, append = TRUE)
-cat(input.df[,2][1:len], file = filename, sep = ",", append = TRUE)
