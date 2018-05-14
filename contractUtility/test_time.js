@@ -2,7 +2,7 @@
 
 'use strict';
 
-var timeseconds = new Date(2018,0,8,9,0,0).getTime() / 1000 + 86400 * 90;
+var timeseconds = new Date(2018,4,11,9,0,0).getTime() / 1000 + 86400 * 182;
 console.log(timeseconds);
 console.log(86400 * 365 * 2);
 //var nowtime = new Date().getTime() / 1000;
