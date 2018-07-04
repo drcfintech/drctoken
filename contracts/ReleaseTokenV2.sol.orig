@@ -183,16 +183,17 @@ contract ReleaseTokenV2 is ReleaseToken {
         while (i < len) {
             address frozenAddr = frozenAccounts[i];
             if (frozenAddr == _target) {
-                TimeRec storage timePair = frozenTimes[frozenAddr][_num];  
-                if (timePair.releasePeriodEndTime == timePair.endTime || now <= timePair.endTime ) {
+                TimeRec storage timePair = frozenTimes[frozenAddr][_num]; 
+                uint256 nowTime = now; 
+                if (timePair.releasePeriodEndTime == timePair.endTime || nowTime <= timePair.endTime ) {
                     return (timePair.releasePeriodEndTime.sub(timePair.endTime));
                 }    
 
-                if (timePair.releasePeriodEndTime < now) {
+                if (timePair.releasePeriodEndTime < nowTime) {
                     return 0;
                 }
 
-                return (timePair.releasePeriodEndTime.sub(now));               
+                return (timePair.releasePeriodEndTime.sub(nowTime));               
             }
 
             i = i.add(1);
@@ -206,7 +207,7 @@ contract ReleaseTokenV2 is ReleaseToken {
      *
      * @param _target the owner of some amount of tokens
      */
-    function gatherOldBalanceOf(address _target) public returns (uint256) {
+    function gatherOldBalanceOf(address _target) public view returns (uint256) {
         require(_target != address(0));
         require(frozenTimes[_target].length == 0); // no freeze action on this address
 

@@ -1,13 +1,13 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.13;
 
-import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
+import 'zeppelin-solidity/contracts/ownership/DelayedClaimable.sol';
 
 // interface iContract {
 //     function transferOwnership(address _newOwner) external;
 //     function owner() external view returns (address);
 // }
 
-contract OwnerContract is Claimable {
+contract OwnerContract is DelayedClaimable {
     Claimable public ownedContract;
     address internal origOwner;
 
