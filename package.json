@@ -17,17 +17,17 @@
     "bluebird": "^3.5.1",
     "cron": "^1.3.0",
     "crypto": "^1.0.1",
-    "ethereumjs-tx": "^1.3.4",
-    "ethereumjs-util": "^5.1.5",
-    "eventstream": "0.0.3",
-    "node-rsa": "^0.4.2",
-    "nodemailer": "^4.6.4",
-    "nodemon": "^1.17.3",
+    "ethereumjs-tx": "^1.3.5",
+    "ethereumjs-util": "^5.2.0",
+    "event-stream": "^3.3.4",
+    "node-rsa": "^1.0.0",
+    "nodemailer": "^4.6.7",
+    "nodemon": "^1.17.5",
     "promise": "^8.0.1",
     "querystring": "^0.2.0",
-    "truffle-contract": "^3.0.4",
-    "truffle-hdwallet-provider": "0.0.3",
-    "web3": "^1.0.0-beta.33",
-    "zeppelin-solidity": "^1.8.0"
+    "truffle-contract": "^3.0.5",
+    "truffle-hdwallet-provider": "0.0.5",
+    "web3": "^1.0.0-beta.34",
+    "zeppelin-solidity": "^1.10.0"
   }
 }

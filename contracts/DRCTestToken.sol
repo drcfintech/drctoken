@@ -11,12 +11,12 @@ interface tokenRecipient {
         uint256 _value,
         address _token, 
         bytes _extraData
-    ) public; 
+    ) external; 
 }
 
 contract DRCTestToken is BurnableToken, MintableToken, PausableToken {    
-    string public name = 'DRC Test Token';
-    string public symbol = 'DRCT';
+    string public name = "DRC Test Token";
+    string public symbol = "DRCT";
     uint8 public decimals = 18;
     uint public INITIAL_SUPPLY = 1000000000000000000000000000;
 

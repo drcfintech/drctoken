@@ -1,15 +1,18 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.13;
 
-import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
+// import 'zeppelin-solidity/contracts/ownership/DelayedClaimable.sol';
+import './MultiOwners.sol';
 
 // interface iContract {
 //     function transferOwnership(address _newOwner) external;
 //     function owner() external view returns (address);
 // }
 
-contract OwnerContract is Claimable {
+contract OwnerContract is MultiOwners {
     Claimable public ownedContract;
-    address internal origOwner;
+    // address internal origOwner;
+
+    string public constant AUTH_CHANGEOWNEDOWNER = "transferOwnerOfOwnedContract";
 
     /**
      * @dev bind a contract as its owner
@@ -19,7 +22,7 @@ contract OwnerContract is Claimable {
     function bindContract(address _contract) onlyOwner public returns (bool) {
         require(_contract != address(0));
         ownedContract = Claimable(_contract);
-        origOwner = ownedContract.owner();
+        // origOwner = ownedContract.owner();
 
         // take ownership of the owned contract
         ownedContract.claimOwnership();
@@ -31,20 +34,25 @@ contract OwnerContract is Claimable {
      * @dev change the owner of the contract from this contract address to the original one. 
      *
      */
-    function transferOwnershipBack() onlyOwner public {
-        ownedContract.transferOwnership(origOwner);
-        ownedContract = Claimable(address(0));
-        origOwner = address(0);
-    }
+    // function transferOwnershipBack() onlyOwner public {
+    //     ownedContract.transferOwnership(origOwner);
+    //     ownedContract = Claimable(address(0));
+    //     origOwner = address(0);
+    // }
 
     /**
      * @dev change the owner of the contract from this contract address to another one. 
      *
      * @param _nextOwner the contract address that will be next Owner of the original Contract
      */
-    function changeOwnershipto(address _nextOwner)  onlyOwner public {
+    function changeOwnedOwnershipto(address _nextOwner) onlyMultiOwners public {
+        require(hasAuth(AUTH_CHANGEOWNEDOWNER));
+
         ownedContract.transferOwnership(_nextOwner);
         ownedContract = Claimable(address(0));
-        origOwner = address(0);
+        // origOwner = address(0);
+
+        clearAuth(AUTH_CHANGEOWNEDOWNER);
     }
+
 }
