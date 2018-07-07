@@ -1,7 +1,7 @@
 pragma solidity ^0.4.23;
 
 // import 'zeppelin-solidity/contracts/ownership/DelayedClaimable.sol';
-import './OwnerContract.sol';
+import './MultiOwnerContract.sol';
 
 
 interface itoken {
@@ -17,7 +17,7 @@ interface itoken {
     function unpause() external;
 }
 
-contract DRCTOwner is OwnerContract {
+contract DRCTOwner is MultiOwnerContract {
     string public constant AUTH_INITCONGRESS = "initCongress";
     string public constant AUTH_CANMINT = "canMint";
 
