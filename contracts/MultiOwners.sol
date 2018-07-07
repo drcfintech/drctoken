@@ -84,9 +84,16 @@ contract MultiOwners is DelayedClaimable, RBAC {
     for (uint j = 0; j < voters.length; j = j.add(1)) {
       if (voters[j] == msg.sender) {
         delete voters[j];
+        break;
       }
     }
+    for (uint jj = j; jj < voters.length.sub(1); jj = jj.add(1)) {
+      voters[jj] = voters[jj.add(1)];
+    }
 
+    delete voters[voters.length.sub(1)];
+    voters.length = voters.length.sub(1);
+    
     if (voters.length == 0) {
       authorizations[_authType] = authorizations[_authType].sub(1);
     //   voteResults[side][_authType] = true;
@@ -96,8 +103,15 @@ contract MultiOwners is DelayedClaimable, RBAC {
       for (uint i = 0; i < authTypes.length; i = i.add(1)) {
         if (authTypes[i].equal(_authType)) {
           delete authTypes[i];
+          break;
         }
       }
+      for (uint ii = i; ii < authTypes.length.sub(1); ii = ii.add(1)) {
+        authTypes[ii] = authTypes[ii.add(1)];
+      }
+
+      delete authTypes[authTypes.length.sub(1)];
+      authTypes.length = authTypes.length.sub(1);
     }
   }
 
@@ -129,13 +143,21 @@ contract MultiOwners is DelayedClaimable, RBAC {
       for (uint j = 0; j < voters.length; j = j.add(1)) {
         delete voters[j];
       }
+      voters.length = 0;
     }
     
     for (uint k = 0; k < authTypes.length; k = k.add(1)) {
       if (authTypes[k].equal(_authType)) {
         delete authTypes[k];
+        break;
       }
     }
+    for (uint kk = k; kk < authTypes.length.sub(1); kk = kk.add(1)) {
+      authTypes[kk] = authTypes[kk.add(1)];
+    }
+
+    delete authTypes[authTypes.length.sub(1)];
+    authTypes.length = authTypes.length.sub(1);
   }
 
 //   function setAuthRate(uint256 _value) onlyMultiOwners public {
@@ -312,25 +334,46 @@ contract MultiOwners is DelayedClaimable, RBAC {
     for (; j < owners.length; j = j.add(1)) {
       if (owners[j] == _addr) {
         delete owners[j];
+        break;
       }
     }
+    for (uint jj = j; jj < owners.length.sub(1); jj = jj.add(1)) {
+      owners[jj] = owners[jj.add(1)];
+    }
+
+    delete owners[owners.length.sub(1)];
+    owners.length = owners.length.sub(1);
 
     string memory side = ownerOfSides[_addr];
     if (sideExist[side] > 0) {
       sideExist[side] = sideExist[side].sub(1);
       if (sideExist[side] == 0) {
         multiOwnerSides = multiOwnerSides.sub(1);
-        for (uint i = 0; i < authTypes.length; i = i.add(1)) {
+        for (uint i = 0; i < authTypes.length; ) {
           address[] storage voters = sideVoters[side][authTypes[i]];
           for (uint k = 0; k < voters.length; k = k.add(1)) {
             delete voters[k];
           }
+          voters.length = 0;
+
           authorizations[authTypes[i]] = authorizations[authTypes[i]].sub(1);
+          if (authorizations[authTypes[i]] == 0) {
+            delete authTypes[i];
+            
+            for (uint kk = i; kk < authTypes.length.sub(1); kk = kk.add(1)) {
+              authTypes[kk] = authTypes[kk.add(1)];
+            }
+
+            delete authTypes[authTypes.length.sub(1)];
+            authTypes.length = authTypes.length.sub(1);
+          } else {
+            i = i.add(1);
+          }
         }
       }
     } 
 
-    ownerOfSides[_addr] = "";    
+    delete ownerOfSides[_addr];    
 
     clearAuth(AUTH_REMOVEOWNER);
     emit OwnerRemoved(_addr);
