@@ -133,7 +133,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
    */
   function finishInitOwners() onlyOwner public {
     initAdd = false;
-    InitialFinished();
+    emit InitialFinished();
   }
 
   /**
