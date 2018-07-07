@@ -32,7 +32,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
   string public constant ROLE_MULTIOWNER = "multiOwner";
   string public constant AUTH_ADDOWNER = "addOwner";
   string public constant AUTH_REMOVEOWNER = "removeOwner";
-  string public constant AUTH_SETAUTHRATE = "setAuthRate";
+//   string public constant AUTH_SETAUTHRATE = "setAuthRate";
 
   /**
    * @dev Throws if called by any account that's not whitelisted.
