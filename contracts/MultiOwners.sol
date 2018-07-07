@@ -16,7 +16,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
 
   mapping (string => uint256) private authorizations;
   mapping (address => string) private ownerOfSides;
-  mapping (string => bool) private voteResults;
+  mapping (string => mapping (string => bool)) private voteResults;
   mapping (string => uint256) private sideExist;
   address[] private owners;
 //   string[] private ownerSides;
@@ -44,9 +44,9 @@ contract MultiOwners is DelayedClaimable, RBAC {
 
   function authorize(string _authType) onlyMultiOwners public {
     string storage side = ownerOfSides[msg.sender];
-    if (!voteResults[side]) {
+    if (!voteResults[side][_authType]) {
       authorizations[_authType] = authorizations[_authType].add(1);
-      voteResults[side] = true;
+      voteResults[side][_authType] = true;
     }
   }
 
@@ -74,8 +74,8 @@ contract MultiOwners is DelayedClaimable, RBAC {
     authorizations[_authType] = 0;
     for (uint i = 0; i < owners.length; i = i.add(1)) {
       string storage side = ownerOfSides[owners[i]];
-      if (voteResults[side]) {
-        voteResults[side] = false;
+      if (voteResults[side][_authType]) {
+        voteResults[side][_authType] = false;
       }
     }
   }
