@@ -4,6 +4,7 @@ pragma solidity ^0.4.23;
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 import "zeppelin-solidity/contracts/ownership/DelayedClaimable.sol";
 import "zeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
+import "./StringUtils.sol";
 
 
 /**
@@ -13,12 +14,15 @@ import "zeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
  */
 contract MultiOwners is DelayedClaimable, RBAC {
   using SafeMath for uint256;
+  using StringUtils for string;
 
   mapping (string => uint256) private authorizations;
   mapping (address => string) private ownerOfSides;
-  mapping (string => mapping (string => bool)) private voteResults;
+//   mapping (string => mapping (string => bool)) private voteResults;
   mapping (string => uint256) private sideExist;
+  mapping (string => mapping (string => address[])) private sideVoters;
   address[] private owners;
+  string[] private authTypes;
 //   string[] private ownerSides;
   uint256 multiOwnerSides;
   uint256 ownerSidesLimit = 3;
@@ -43,10 +47,57 @@ contract MultiOwners is DelayedClaimable, RBAC {
   }
 
   function authorize(string _authType) onlyMultiOwners public {
-    string storage side = ownerOfSides[msg.sender];
-    if (!voteResults[side][_authType]) {
+    string memory side = ownerOfSides[msg.sender];
+    address[] storage voters = sideVoters[side][_authType];
+    if (voters.length == 0) {
       authorizations[_authType] = authorizations[_authType].add(1);
-      voteResults[side][_authType] = true;
+    //   voteResults[side][_authType] = true;
+    }
+
+    uint j = 0;
+    for (; j < voters.length; j = j.add(1)) {
+      if (voters[j] == msg.sender) {
+        break;
+      }
+    }
+
+    if (j >= voters.length) {
+      voters.push(msg.sender);
+    }
+
+    uint i = 0;
+    for (; i < authTypes.length; i = i.add(1)) {
+      if (authTypes[i].equal(_authType)) {
+        break;
+      }
+    }
+
+    if (i >= authTypes.length) {
+      authTypes.push(_authType);
+    }
+  }
+
+  function deAuthorize(string _authType) onlyMultiOwners public {
+    string memory side = ownerOfSides[msg.sender];
+    address[] storage voters = sideVoters[side][_authType];
+
+    for (uint j = 0; j < voters.length; j = j.add(1)) {
+      if (voters[j] == msg.sender) {
+        delete voters[j];
+      }
+    }
+
+    if (voters.length == 0) {
+      authorizations[_authType] = authorizations[_authType].sub(1);
+    //   voteResults[side][_authType] = true;
+    }
+
+    if (authorizations[_authType] == 0) {
+      for (uint i = 0; i < authTypes.length; i = i.add(1)) {
+        if (authTypes[i].equal(_authType)) {
+          delete authTypes[i];
+        }
+      }
     }
   }
 
@@ -73,9 +124,16 @@ contract MultiOwners is DelayedClaimable, RBAC {
   function clearAuth(string _authType) internal {
     authorizations[_authType] = 0;
     for (uint i = 0; i < owners.length; i = i.add(1)) {
-      string storage side = ownerOfSides[owners[i]];
-      if (voteResults[side][_authType]) {
-        voteResults[side][_authType] = false;
+      string memory side = ownerOfSides[owners[i]];
+      address[] storage voters = sideVoters[side][_authType];
+      for (uint j = 0; j < voters.length; j = j.add(1)) {
+        delete voters[j];
+      }
+    }
+    
+    for (uint k = 0; k < authTypes.length; k = k.add(1)) {
+      if (authTypes[k].equal(_authType)) {
+        delete authTypes[k];
       }
     }
   }
@@ -257,11 +315,18 @@ contract MultiOwners is DelayedClaimable, RBAC {
       }
     }
 
-    string storage side = ownerOfSides[_addr];
+    string memory side = ownerOfSides[_addr];
     if (sideExist[side] > 0) {
       sideExist[side] = sideExist[side].sub(1);
       if (sideExist[side] == 0) {
-          multiOwnerSides = multiOwnerSides.sub(1);
+        multiOwnerSides = multiOwnerSides.sub(1);
+        for (uint i = 0; i < authTypes.length; i = i.add(1)) {
+          address[] storage voters = sideVoters[side][authTypes[i]];
+          for (uint k = 0; k < voters.length; k = k.add(1)) {
+            delete voters[k];
+          }
+          authorizations[authTypes[i]] = authorizations[authTypes[i]].sub(1);
+        }
       }
     } 
 
