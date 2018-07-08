@@ -268,7 +268,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
       for (uint i = 0; i < authTypes.length; ) {
         address[] storage voters = sideVoters[side][authTypes[i]];
         for (uint m = 0; m < voters.length; m = m.add(1)) {
-          if (voters[m] == msg.sender) {
+          if (voters[m] == _addr) {
             delete voters[m];
             break;
           }
