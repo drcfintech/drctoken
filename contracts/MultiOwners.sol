@@ -201,6 +201,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
   {
     require(initAdd);
     require(multiOwnerSides < ownerSidesLimit);
+    require(_addr != address(0));
 
     addAddress(_addr, _side);
 
@@ -227,6 +228,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
   {
     require(hasAuth(AUTH_ADDOWNER));
     require(multiOwnerSides < ownerSidesLimit);
+    require(_addr != address(0));
 
     addAddress(_addr, _side);
         
