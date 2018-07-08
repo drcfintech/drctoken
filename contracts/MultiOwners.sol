@@ -45,6 +45,14 @@ contract MultiOwners is DelayedClaimable, RBAC {
     checkRole(msg.sender, ROLE_MULTIOWNER);
     _;
   }
+  
+  /**
+   * @dev Throws if called by any account that's not whitelisted.
+   */
+  modifier canInitial() {
+    require(initAdd);
+    _;
+  }
 
   function authorize(string _authType) onlyMultiOwners public {
     string memory side = ownerOfSides[msg.sender];
@@ -115,19 +123,6 @@ contract MultiOwners is DelayedClaimable, RBAC {
     }
   }
 
-//   function ownerSidesCount() internal returns (uint256) {
-//     uint256 multiOwnerSides = 0;
-//     for (uint i = 0; i < owners.length; i = i.add(1)) {
-//       string storage side = ownerOfSides[owners[i]];
-//       if (!sideExist[side]) {
-//         sideExist[side] = true;
-//         multiOwnerSides = multiOwnerSides.add(1);
-//       }
-//     }
-
-//     return multiOwnerSides;
-//   }
-
   function hasAuth(string _authType) public view returns (bool) {
     require(multiOwnerSides > 1);
     
@@ -160,28 +155,24 @@ contract MultiOwners is DelayedClaimable, RBAC {
     authTypes.length = authTypes.length.sub(1);
   }
 
-//   function setAuthRate(uint256 _value) onlyMultiOwners public {
-//     require(hasAuth(AUTH_SETAUTHRATE));
-//     require(_value > 0);
-
-//     authRate = _value;
-//     clearAuth(AUTH_SETAUTHRATE);
-//   }
-
   function addAddress(address _addr, string _side) internal {
-    uint i = 0;
-    for (; i < owners.length; i = i.add(1)) {
-      if (owners[i] == _addr) {
-        break;
-      }
-    }
+    require(multiOwnerSides < ownerSidesLimit);
+    require(_addr != address(0));
+    require(ownerOfSides[_addr].equal("")); // not allow duplicated adding
 
-    if (i >= owners.length) {
-      owners.push(_addr);
+    // uint i = 0;
+    // for (; i < owners.length; i = i.add(1)) {
+    //   if (owners[i] == _addr) {
+    //     break;
+    //   }
+    // }
 
-      addRole(_addr, ROLE_MULTIOWNER);    
-      ownerOfSides[_addr] = _side;
-    }
+    // if (i >= owners.length) {
+    owners.push(_addr); // for not allowing duplicated adding, so each addr should be new
+
+    addRole(_addr, ROLE_MULTIOWNER);    
+    ownerOfSides[_addr] = _side;
+    // }
 
     if (sideExist[_side] == 0) {        
       multiOwnerSides = multiOwnerSides.add(1);
@@ -197,12 +188,10 @@ contract MultiOwners is DelayedClaimable, RBAC {
    */
   function initAddressAsMultiOwner(address _addr, string _side)
     onlyOwner
+    canInitial
     public
   {
-    require(initAdd);
-    require(multiOwnerSides < ownerSidesLimit);
-    require(_addr != address(0));
-
+    // require(initAdd);
     addAddress(_addr, _side);
 
     // initAdd = false;
@@ -212,7 +201,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
   /**
    * @dev Function to stop initial stage.
    */
-  function finishInitOwners() onlyOwner public {
+  function finishInitOwners() onlyOwner canInitial public {
     initAdd = false;
     emit InitialFinished();
   }
@@ -227,8 +216,6 @@ contract MultiOwners is DelayedClaimable, RBAC {
     public
   {
     require(hasAuth(AUTH_ADDOWNER));
-    require(multiOwnerSides < ownerSidesLimit);
-    require(_addr != address(0));
 
     addAddress(_addr, _side);
         
@@ -246,77 +233,6 @@ contract MultiOwners is DelayedClaimable, RBAC {
   {
     return hasRole(_addr, ROLE_MULTIOWNER);
   }
-
-  /**
-   * @dev add addresses to the whitelist
-   * @param _addrs addresses
-   * @return true if at least one address was added to the whitelist,
-   * false if all addresses were already in the whitelist
-   */
-//   function InitAddressesAsMultiOwner(address[] _addrs, bytes[] _sides)
-//     onlyOwner
-//     public
-//   {
-//     require(initAdd);
-//     require(_addrs.length == _sides.length);
-
-//     for (uint256 i = 0; i < _addrs.length; i = i.add(1)) {
-//       require(ownerSidesCount() < ownerSidesLimit);
-
-//       addRole(_addrs[i], ROLE_MULTIOWNER);
-//       ownerOfSides[_addrs[i]] = string(_sides[i]);
-//       uint j = 0;
-//       for (; j < owners.length; j = j.add(1)) {
-//         if (owners[j] == _addrs[i]) {
-//           break;
-//         }
-//       }
-
-//       if (i >= owners.length) {
-//         owners.push(_addrs[i]);
-//       }
-    
-//       clearAuth(AUTH_ADDOWNER);
-//       emit OwnerAdded(_addrs[i], string(_sides[i]));
-//     }
-
-//     initAdd = false;
-//   }
-
-  /**
-   * @dev add addresses to the whitelist
-   * @param _addrs addresses
-   * @return true if at least one address was added to the whitelist,
-   * false if all addresses were already in the whitelist
-   */
-//   function AddAddressesAsMultiOwner(address[] _addrs, bytes[] _sides)
-//     onlyMultiOwners
-//     public
-//   {
-//     require(hasAuth(AUTH_ADDOWNER));
-//     require(_addrs.length == _sides.length);
-
-//     for (uint256 i = 0; i < _addrs.length; i = i.add(1)) {
-//       require(ownerSidesCount() < ownerSidesLimit);
-
-//       addRole(_addrs[i], ROLE_MULTIOWNER);
-//       ownerOfSides[_addrs[i]] = string(_sides[i]);
-//       uint j = 0;
-//       for (; j < owners.length; j = j.add(1)) {
-//         if (owners[j] == _addrs[i]) {
-//           break;
-//         }
-//       }
-
-//       if (j >= owners.length) {
-//         owners.push(_addrs[i]);
-//       }
-
-//       emit OwnerAdded(_addrs[i], string(_sides[i]));
-//     }
-
-//     clearAuth(AUTH_ADDOWNER);
-//   }
 
   /**
    * @dev remove an address from the whitelist
@@ -349,29 +265,41 @@ contract MultiOwners is DelayedClaimable, RBAC {
     string memory side = ownerOfSides[_addr];
     if (sideExist[side] > 0) {
       sideExist[side] = sideExist[side].sub(1);
-      if (sideExist[side] == 0) {
-        multiOwnerSides = multiOwnerSides.sub(1);
-        for (uint i = 0; i < authTypes.length; ) {
-          address[] storage voters = sideVoters[side][authTypes[i]];
-          for (uint k = 0; k < voters.length; k = k.add(1)) {
-            delete voters[k];
-          }
-          voters.length = 0;
-
-          authorizations[authTypes[i]] = authorizations[authTypes[i]].sub(1);
-          if (authorizations[authTypes[i]] == 0) {
-            delete authTypes[i];
-            
-            for (uint kk = i; kk < authTypes.length.sub(1); kk = kk.add(1)) {
-              authTypes[kk] = authTypes[kk.add(1)];
-            }
-
-            delete authTypes[authTypes.length.sub(1)];
-            authTypes.length = authTypes.length.sub(1);
-          } else {
-            i = i.add(1);
+      for (uint i = 0; i < authTypes.length; ) {
+        address[] storage voters = sideVoters[side][authTypes[i]];
+        for (uint m = 0; m < voters.length; m = m.add(1)) {
+          if (voters[m] == msg.sender) {
+            delete voters[m];
+            break;
           }
         }
+        for (uint n = m; n < voters.length.sub(1); n = n.add(1)) {
+          voters[n] = voters[n.add(1)];
+        }
+ 
+        delete voters[voters.length.sub(1)];
+        voters.length = voters.length.sub(1);
+
+        if (voters.length == 0) {
+            authorizations[authTypes[i]] = authorizations[authTypes[i]].sub(1);
+        }
+
+        if (authorizations[authTypes[i]] == 0) {
+          delete authTypes[i];
+            
+          for (uint kk = i; kk < authTypes.length.sub(1); kk = kk.add(1)) {
+            authTypes[kk] = authTypes[kk.add(1)];
+          }
+
+          delete authTypes[authTypes.length.sub(1)];
+          authTypes.length = authTypes.length.sub(1);
+        } else {
+          i = i.add(1);
+        }
+      }
+
+      if (sideExist[side] == 0) {
+        multiOwnerSides = multiOwnerSides.sub(1);
       }
     } 
 
@@ -380,32 +308,5 @@ contract MultiOwners is DelayedClaimable, RBAC {
     clearAuth(AUTH_REMOVEOWNER);
     emit OwnerRemoved(_addr);
   }
-
-  /**
-   * @dev remove addresses from the whitelist
-   * @param _addrs addresses
-   * @return true if at least one address was removed from the whitelist,
-   * false if all addresses weren't in the whitelist in the first place
-   */
-//   function removeAddressesFromOwners(address[] _addrs)
-//     onlyMultiOwners
-//     public
-//   {
-//     require(hasAuth(AUTH_REMOVEOWNER));
-//     for (uint i = 0; i < _addrs.length; i = i.add(1)) {
-//       removeRole(_addrs[i], ROLE_MULTIOWNER);
-//       ownerOfSides[_addrs[i]] = "";
-//       uint j = 0;
-//       for (; j < owners.length; j = j.add(1)) {
-//         if (owners[j] == _addrs[i]) {
-//           delete owners[j];
-//         }
-//       }
-
-//       emit OwnerRemoved(_addrs[i]);
-//     }
-
-//     clearAuth(AUTH_REMOVEOWNER);
-//   }
 
 }
