@@ -10,7 +10,7 @@ import './MultiOwners.sol';
 
 contract MultiOwnerContract is MultiOwners {
     Claimable public ownedContract;
-    address pendingOwnedOwner;
+    address public pendingOwnedOwner;
     // address internal origOwner;
 
     string public constant AUTH_CHANGEOWNEDOWNER = "transferOwnerOfOwnedContract";
