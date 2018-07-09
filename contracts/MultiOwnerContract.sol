@@ -10,7 +10,7 @@ import './MultiOwners.sol';
 
 contract MultiOwnerContract is MultiOwners {
     Claimable public ownedContract;
-    address public pendingOwnedOwner;
+    address pendingOwnedOwner;
     // address internal origOwner;
 
     string public constant AUTH_CHANGEOWNEDOWNER = "transferOwnerOfOwnedContract";
@@ -64,14 +64,18 @@ contract MultiOwnerContract is MultiOwners {
             // ownedContract = Claimable(address(0));
             // origOwner = address(0);
         } else {
+            // the pending owner has already taken the ownership
             ownedContract = Claimable(address(0));
+            pendingOwnedOwner = address(0);
         }
 
         clearAuth(AUTH_CHANGEOWNEDOWNER);
     }
 
     function ownedOwnershipTransferred() onlyOwner public returns (bool) {
+        require(ownedContract != address(0));
         if (ownedContract.owner() == pendingOwnedOwner) {
+            // the pending owner has already taken the ownership  
             ownedContract = Claimable(address(0));
             pendingOwnedOwner = address(0);
             return true;

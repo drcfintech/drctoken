@@ -27,6 +27,7 @@ contract DRCTOwner is MultiOwnerContract {
     string public constant AUTH_INITCONGRESS = "initCongress";
     string public constant AUTH_CANMINT = "canMint";
     string public constant AUTH_SETMINTAMOUNT = "setMintAmount";
+    string public constant AUTH_FREEZEACCOUNT = "freezeAccount";
 
     bool congressInit = false;
     // bool paramsInit = false;
@@ -97,6 +98,24 @@ contract DRCTOwner is MultiOwnerContract {
 
         clearAuth(AUTH_CANMINT);
         return res;
+    }
+    
+    /**
+     * @dev freeze the account's balance under urgent situation
+     *
+     * by default all the accounts will not be frozen until set freeze value as true. 
+     * 
+     * @param _target address the account should be frozen
+     * @param _freeze bool if true, the account will be frozen
+     */
+    function freezeAccountDirect(address _target, bool _freeze) onlyMultiOwners public {
+        require(hasAuth(AUTH_FREEZEACCOUNT));
+        
+        require(_target != address(0));
+        itoken tk = itoken(address(ownedContract)); 
+        tk.freezeAccount(_target, _freeze);
+
+        clearAuth(AUTH_FREEZEACCOUNT);
     }
     
     /**
