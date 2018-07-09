@@ -7,6 +7,12 @@ const walletConfig = require('./config/walletConfig.json');
 var infura_apikey = "0wkI1EZkxq3GUs5b2vaK";
 
 module.exports = {
+  solc: {
+    optimizer: {
+      enabled: true,
+      runs: 200
+    }
+  },
   networks: {
     development: {
       host: '127.0.0.1',
@@ -14,12 +20,25 @@ module.exports = {
       network_id: '*' // Match any network id
     },
     ropsten: {
-      provider: new HDWalletProvider(walletConfig.mnemonic, "https://ropsten.infura.io/" + infura_apikey),
+      provider: () => {
+        return new HDWalletProvider(walletConfig.mnemonic, 
+          "https://ropsten.infura.io/" + infura_apikey);
+      },
       network_id: 3
     },
     rinkeby: {
-      provider: new HDWalletProvider(walletConfig.mnemonic, "https://rinkeby.infura.io/" + infura_apikey),
+      provider: () => {
+        return new HDWalletProvider(walletConfig.mnemonic, 
+          "https://rinkeby.infura.io/" + infura_apikey);
+      },
       network_id: 4
+    },
+    mainnet: {
+      provider: () => {
+        return new HDWalletProvider(walletConfig.mnemonic, 
+          "https://mainnet.infura.io/" + infura_apikey);
+      },
+      network_id: 1
     }
   }
 }
