@@ -21,10 +21,10 @@ contract MultiOwners is DelayedClaimable, RBAC {
 //   mapping (string => mapping (string => bool)) private voteResults;
   mapping (string => uint256) private sideExist;
   mapping (string => mapping (string => address[])) private sideVoters;
-  address[] private owners;
+  address[] public owners;
   string[] private authTypes;
 //   string[] private ownerSides;
-  uint256 private multiOwnerSides;
+  uint256 public multiOwnerSides;
   uint256 ownerSidesLimit = 5;
 //   uint256 authRate = 75;
   bool initAdd = true;
