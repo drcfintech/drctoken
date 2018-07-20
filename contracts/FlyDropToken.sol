@@ -5,6 +5,7 @@ import 'zeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 
 
+
 /**
  * @title transfer tokens to multi addresses
  */
@@ -28,7 +29,7 @@ contract FlyDropToken is Claimable {
         erc20tk = ERC20(_token);
         require(erc20tk.transferFrom(_from, this, _value)); // transfer tokens to this contract
         approveRecords.push(_extraData);
-        ReceiveApproval(_from, _value, _token, _extraData);
+        emit ReceiveApproval(_from, _value, _token, _extraData);
     } 
 
     /**
