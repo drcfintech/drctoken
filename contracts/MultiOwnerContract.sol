@@ -10,9 +10,18 @@ import './MultiOwners.sol';
 
 contract MultiOwnerContract is MultiOwners {
     Claimable public ownedContract;
+    address public pendingOwnedOwner;
     // address internal origOwner;
 
     string public constant AUTH_CHANGEOWNEDOWNER = "transferOwnerOfOwnedContract";
+
+    /**
+     * @dev Modifier throws if called by any account other than the pendingOwner.
+     */
+    // modifier onlyPendingOwnedOwner() {
+    //     require(msg.sender == pendingOwnedOwner);
+    //     _;
+    // }
 
     /**
      * @dev bind a contract as its owner
@@ -46,13 +55,33 @@ contract MultiOwnerContract is MultiOwners {
      * @param _nextOwner the contract address that will be next Owner of the original Contract
      */
     function changeOwnedOwnershipto(address _nextOwner) onlyMultiOwners public {
+        require(ownedContract != address(0));
         require(hasAuth(AUTH_CHANGEOWNEDOWNER));
 
-        ownedContract.transferOwnership(_nextOwner);
-        ownedContract = Claimable(address(0));
-        // origOwner = address(0);
+        if (ownedContract.owner() != pendingOwnedOwner) {
+            ownedContract.transferOwnership(_nextOwner);
+            pendingOwnedOwner = _nextOwner;
+            // ownedContract = Claimable(address(0));
+            // origOwner = address(0);
+        } else {
+            // the pending owner has already taken the ownership
+            ownedContract = Claimable(address(0));
+            pendingOwnedOwner = address(0);
+        }
 
         clearAuth(AUTH_CHANGEOWNEDOWNER);
     }
+
+    function ownedOwnershipTransferred() onlyOwner public returns (bool) {
+        require(ownedContract != address(0));
+        if (ownedContract.owner() == pendingOwnedOwner) {
+            // the pending owner has already taken the ownership  
+            ownedContract = Claimable(address(0));
+            pendingOwnedOwner = address(0);
+            return true;
+        } else {
+            return false;
+        }
+    } 
 
 }

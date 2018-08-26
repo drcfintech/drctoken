@@ -21,11 +21,11 @@ contract MultiOwners is DelayedClaimable, RBAC {
 //   mapping (string => mapping (string => bool)) private voteResults;
   mapping (string => uint256) private sideExist;
   mapping (string => mapping (string => address[])) private sideVoters;
-  address[] private owners;
+  address[] public owners;
   string[] private authTypes;
 //   string[] private ownerSides;
-  uint256 multiOwnerSides;
-  uint256 ownerSidesLimit = 3;
+  uint256 public multiOwnerSides;
+  uint256 ownerSidesLimit = 5;
 //   uint256 authRate = 75;
   bool initAdd = true;
 
@@ -39,7 +39,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
 //   string public constant AUTH_SETAUTHRATE = "setAuthRate";
 
   /**
-   * @dev Throws if called by any account that's not whitelisted.
+   * @dev Throws if called by any account that's not multiOwners.
    */
   modifier onlyMultiOwners() {
     checkRole(msg.sender, ROLE_MULTIOWNER);
@@ -47,21 +47,28 @@ contract MultiOwners is DelayedClaimable, RBAC {
   }
   
   /**
-   * @dev Throws if called by any account that's not whitelisted.
+   * @dev Throws if not in initializing stage.
    */
   modifier canInitial() {
     require(initAdd);
     _;
   }
 
+  /**
+   * @dev the msg.sender will authorize a type of event.
+   * @param _authType the event type need to be authorized
+   */
   function authorize(string _authType) onlyMultiOwners public {
     string memory side = ownerOfSides[msg.sender];
     address[] storage voters = sideVoters[side][_authType];
+
     if (voters.length == 0) {
+      // if the first time to authorize this type of event
       authorizations[_authType] = authorizations[_authType].add(1);
     //   voteResults[side][_authType] = true;
     }
 
+    // add voters of one side
     uint j = 0;
     for (; j < voters.length; j = j.add(1)) {
       if (voters[j] == msg.sender) {
@@ -73,6 +80,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
       voters.push(msg.sender);
     }
 
+    // add the authType for clearing auth
     uint i = 0;
     for (; i < authTypes.length; i = i.add(1)) {
       if (authTypes[i].equal(_authType)) {
@@ -85,6 +93,10 @@ contract MultiOwners is DelayedClaimable, RBAC {
     }
   }
 
+  /**
+   * @dev the msg.sender will clear the authorization he has given for the event.
+   * @param _authType the event type need to be authorized
+   */
   function deAuthorize(string _authType) onlyMultiOwners public {
     string memory side = ownerOfSides[msg.sender];
     address[] storage voters = sideVoters[side][_authType];
@@ -96,6 +108,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
       }
     }
 
+    // if the sender has authorized this type of event, will remove its vote
     if (j < voters.length) {
       for (uint jj = j; jj < voters.length.sub(1); jj = jj.add(1)) {
         voters[jj] = voters[jj.add(1)];
@@ -103,12 +116,15 @@ contract MultiOwners is DelayedClaimable, RBAC {
 
       delete voters[voters.length.sub(1)];
       voters.length = voters.length.sub(1);
-    
+      
+      // if there is no votes of one side, the authorization need to be decreased
       if (voters.length == 0) {
         authorizations[_authType] = authorizations[_authType].sub(1);
       //   voteResults[side][_authType] = true;
       }
 
+      // if there is no authorization on this type of event, 
+      // this event need to be removed from the list 
       if (authorizations[_authType] == 0) {
         for (uint i = 0; i < authTypes.length; i = i.add(1)) {
           if (authTypes[i].equal(_authType)) {
@@ -126,24 +142,33 @@ contract MultiOwners is DelayedClaimable, RBAC {
     }
   }
 
+  /**
+   * @dev judge if the event has already been authorized.
+   * @param _authType the event type need to be authorized
+   */
   function hasAuth(string _authType) public view returns (bool) {
-    require(multiOwnerSides > 1);
+    require(multiOwnerSides > 1); // at least 2 sides have authorized
     
     // uint256 rate = authorizations[_authType].mul(100).div(multiOwnerNumber)
     return (authorizations[_authType] == multiOwnerSides);
   }
 
+  /**
+   * @dev clear all the authorizations that have been given for a type of event.
+   * @param _authType the event type need to be authorized
+   */
   function clearAuth(string _authType) internal {
-    authorizations[_authType] = 0;
+    authorizations[_authType] = 0; // clear authorizations
     for (uint i = 0; i < owners.length; i = i.add(1)) {
       string memory side = ownerOfSides[owners[i]];
       address[] storage voters = sideVoters[side][_authType];
       for (uint j = 0; j < voters.length; j = j.add(1)) {
-        delete voters[j];
+        delete voters[j]; // clear votes of one side
       }
       voters.length = 0;
     }
     
+    // clear this type of event
     for (uint k = 0; k < authTypes.length; k = k.add(1)) {
       if (authTypes[k].equal(_authType)) {
         delete authTypes[k];
@@ -158,6 +183,10 @@ contract MultiOwners is DelayedClaimable, RBAC {
     authTypes.length = authTypes.length.sub(1);
   }
 
+  /**
+   * @dev add an address as one of the multiOwners.
+   * @param _addr the account address used as a multiOwner
+   */
   function addAddress(address _addr, string _side) internal {
     require(multiOwnerSides < ownerSidesLimit);
     require(_addr != address(0));
@@ -186,8 +215,10 @@ contract MultiOwners is DelayedClaimable, RBAC {
 
   /**
    * @dev add an address to the whitelist
-   * @param _addr address
-   * @return true if the address was added to the whitelist, false if the address was already in the whitelist
+   * @param _addr address will be one of the multiOwner
+   * @param _side the side name of the multiOwner
+   * @return true if the address was added to the multiOwners list, 
+   *         false if the address was already in the multiOwners list
    */
   function initAddressAsMultiOwner(address _addr, string _side)
     onlyOwner
@@ -212,7 +243,9 @@ contract MultiOwners is DelayedClaimable, RBAC {
   /**
    * @dev add an address to the whitelist
    * @param _addr address
-   * @return true if the address was added to the whitelist, false if the address was already in the whitelist
+   * @param _side the side name of the multiOwner
+   * @return true if the address was added to the multiOwners list, 
+   *         false if the address was already in the multiOwners list
    */
   function addAddressAsMultiOwner(address _addr, string _side)
     onlyMultiOwners
@@ -227,7 +260,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
   }
 
   /**
-   * @dev getter to determine if address is in whitelist
+   * @dev getter to determine if address is in multiOwner list
    */
   function isMultiOwner(address _addr)
     public
@@ -240,8 +273,8 @@ contract MultiOwners is DelayedClaimable, RBAC {
   /**
    * @dev remove an address from the whitelist
    * @param _addr address
-   * @return true if the address was removed from the whitelist,
-   * false if the address wasn't in the whitelist in the first place
+   * @return true if the address was removed from the multiOwner list,
+   *         false if the address wasn't in the multiOwner list
    */
   function removeAddressFromOwners(address _addr)
     onlyMultiOwners
@@ -251,6 +284,7 @@ contract MultiOwners is DelayedClaimable, RBAC {
 
     removeRole(_addr, ROLE_MULTIOWNER);   
 
+    // first remove the owner
     uint j = 0;
     for (; j < owners.length; j = j.add(1)) {
       if (owners[j] == _addr) {
@@ -271,9 +305,11 @@ contract MultiOwners is DelayedClaimable, RBAC {
     // if (sideExist[side] > 0) {
     sideExist[side] = sideExist[side].sub(1);
     if (sideExist[side] == 0) {
-      multiOwnerSides = multiOwnerSides.sub(1);
+      require(multiOwnerSides > 2); // not allow only left 1 side 
+      multiOwnerSides = multiOwnerSides.sub(1); // this side has been removed
     }
 
+    // for every event type, if this owner has voted the event, then need to remove
     for (uint i = 0; i < authTypes.length; ) {
       address[] storage voters = sideVoters[side][authTypes[i]];
       for (uint m = 0; m < voters.length; m = m.add(1)) {
@@ -290,10 +326,12 @@ contract MultiOwners is DelayedClaimable, RBAC {
         delete voters[voters.length.sub(1)];
         voters.length = voters.length.sub(1);
 
+        // if this side only have this 1 voter, the authorization of this event need to be decreased
         if (voters.length == 0) {
           authorizations[authTypes[i]] = authorizations[authTypes[i]].sub(1);
         }
 
+        // if there is no authorization of this event, the event need to be removed
         if (authorizations[authTypes[i]] == 0) {
           delete authTypes[i];
             
