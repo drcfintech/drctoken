@@ -1,7 +1,7 @@
 pragma solidity ^0.4.23;
 
 
-import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
+import 'openzeppelin-solidity/contracts/ownership/Claimable.sol';
 import './Autonomy.sol';
 
 

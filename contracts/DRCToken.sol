@@ -1,9 +1,9 @@
 pragma solidity ^0.4.18;
 
-import 'zeppelin-solidity/contracts/token/ERC20/BurnableToken.sol';
-import 'zeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
-import 'zeppelin-solidity/contracts/token/ERC20/PausableToken.sol';
-import 'zeppelin-solidity/contracts/ownership/Claimable.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/PausableToken.sol';
+import 'openzeppelin-solidity/contracts/ownership/Claimable.sol';
 import './Autonomy.sol';
 // import 'zeppelin-solidity/contracts/token/SafeERC20.sol';
 
