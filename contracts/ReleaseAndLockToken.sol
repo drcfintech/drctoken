@@ -1,9 +1,10 @@
 pragma solidity ^0.4.17;
 
 import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './OwnerContract.sol';
 import './LockedStorageInterface.sol';
+import './FlyDropTokenMgrInterface.sol';
 
 
 /**
@@ -13,6 +14,9 @@ contract ReleaseAndLockToken is OwnerContract {
     using SafeMath for uint256;
 
     ILockedStorage public lockedStorage;
+    IFlyDropTokenMgr public flyDropMgr;
+    // ERC20 public erc20tk;
+    mapping (address => uint256) preReleaseAmounts;
 
     event ReleaseFunds(address indexed _target, uint256 _amount);
 
@@ -20,11 +24,20 @@ contract ReleaseAndLockToken is OwnerContract {
      * @dev bind a contract as its owner
      *
      * @param _contract the LockedStorage contract address that will be binded by this Owner Contract
+     * @param _flyDropcontract the flydrop contract for transfer tokens from the fixed main accounts
+     * @param _tk the erc20 token address
      */
-    function bindContract(address _contract) onlyOwner public returns (bool) {
+    function initialize(address _contract, address _flyDropContract/*, address _tk*/) onlyOwner public returns (bool) {
         require(_contract != address(0));
+        require(_flyDropContract != address(0));
+        require(_tk != address(0));
+
+        require(super.bindContract(_contract));
         lockedStorage = ILockedStorage(_contract);
-        return super.bindContract(_contract);
+        flyDropMgr = IFlyDropTokenMgr(_flyDropContract);
+        // erc20tk = ERC20(_tk);
+
+        return true;
     }
 
     /**
@@ -77,19 +90,14 @@ contract ReleaseAndLockToken is OwnerContract {
         require(_account != address(0));
 
         uint256 totalRemain = 0;
-        // uint256 len = frozenAccounts.length;
         uint256 len = lockedStorage.size();
         uint256 i = 0;
         while (i < len) {
-            // address frozenAddr = frozenAccounts[i];
             address frozenAddr = lockedStorage.addressByIndex(i);
             if (frozenAddr == _account) {
-                // uint256 timeRecLen = frozenTimes[frozenAddr].length;
                 uint256 timeRecLen = lockedStorage.lockedStageNum(_account);
                 uint256 j = 0;
                 while (j < timeRecLen) {
-                    // TimeRec storage timePair = frozenTimes[frozenAddr][j];
-                    // totalRemain = totalRemain.add(timePair.remain);
                     totalRemain = totalRemain.add(lockedStorage.remainLockedOf(_account, j));
 
                     j = j.add(1);
@@ -108,15 +116,15 @@ contract ReleaseAndLockToken is OwnerContract {
      *
      */
     function needRelease() public view returns (bool) {
-        uint256 len = frozenAccounts.length;
+        uint256 len = lockedStorage.size();
         uint256 i = 0;
         while (i < len) {
-            address frozenAddr = frozenAccounts[i];
-            uint256 timeRecLen = frozenTimes[frozenAddr].length;
+            address frozenAddr = lockedStorage.addressByIndex(i);
+            uint256 timeRecLen = lockedStorage.lockedStageNum(frozenAddr);
             uint256 j = 0;
             while (j < timeRecLen) {
-                TimeRec storage timePair = frozenTimes[frozenAddr][j];
-                if (now >= timePair.endTime) {
+                // TimeRec storage timePair = frozenTimes[frozenAddr][j];
+                if (now >= lockedStorage.endTimeOfStage(frozenAddr, j)) {
                     return true;
                 }
 
@@ -130,40 +138,48 @@ contract ReleaseAndLockToken is OwnerContract {
     }
 
     /**
+     * @dev judge whether we need to release the locked token of the target address
+     * @param _target the owner of the amount of tokens
+     *
+     */
+    function needRelease(address _target) public view returns (bool) {
+        require(_target != address(0));
+
+        uint256 timeRecLen = lockedStorage.lockedStageNum(_target);
+        uint256 j = 0;
+        while (j < timeRecLen) {
+            if (now >= lockedStorage.endTimeOfStage(frozenAddr, j)) {
+                return true;
+            }
+
+            j = j.add(1);
+        }
+
+        return false;
+    }
+
+    /**
      * @dev freeze the amount of tokens of an account
      *
      * @param _target the owner of some amount of tokens
+     * @param _name the user name of the _target
      * @param _value the amount of the tokens
      * @param _frozenEndTime the end time of the lock period, unit is second
      * @param _releasePeriod the locking period, unit is second
      */
-    function freeze(address _target, uint256 _value, uint256 _frozenEndTime, uint256 _releasePeriod) onlyOwner public returns (bool) {
+    function freeze(address _target, string _name, uint256 _value, uint256 _frozenEndTime, uint256 _releasePeriod) onlyOwner public returns (bool) {
         //require(_tokenAddr != address(0));
         require(_target != address(0));
         require(_value > 0);
         require(_frozenEndTime > 0);
 
-        uint256 len = frozenAccounts.length;
-        
-        uint256 i = 0;
-        for (; i < len; i = i.add(1)) {
-            if (frozenAccounts[i] == _target) {
-                break;
-            }            
-        }
-
-        if (i >= len) {
-            frozenAccounts.push(_target); // add new account
+        if (!lockedStorage.isExisted(_target)) {
+            lockedStorage.addAccount(_target, _name, _value); // add new account
         } 
         
         // each time the new locked time will be added to the backend
-        frozenTimes[_target].push(TimeRec(_value, _value, _frozenEndTime, _frozenEndTime.add(_releasePeriod)));
-        if (owned.frozenAccount(_target)) {
-            uint256 preFrozenAmount = owned.frozenAmount(_target);
-            owned.freezeAccountPartialy(_target, _value.add(preFrozenAmount));
-        } else {
-            owned.freezeAccountPartialy(_target, _value);
-        }
+        require(lockedStorage.addLockedTime(_target, _value, _frozenEndTime, _releasePeriod));
+        require(lockedStorage.freezeTokens(_target, true, _value));
         
         return true;
     }
@@ -172,61 +188,82 @@ contract ReleaseAndLockToken is OwnerContract {
      * @dev transfer an amount of tokens to an account, and then freeze the tokens
      *
      * @param _target the account address that will hold an amount of the tokens
+     * @param _name the user name of the _target
+     * @param _tk the erc20 token need to be transferred
      * @param _value the amount of the tokens which has been transferred
      * @param _frozenEndTime the end time of the lock period, unit is second
      * @param _releasePeriod the locking period, unit is second
      */
-    function transferAndFreeze(address _target, uint256 _value, uint256 _frozenEndTime, uint256 _releasePeriod) onlyOwner public returns (bool) {
+    function transferAndFreeze(address _target, 
+                               string _name, 
+                               address _from,
+                               address _tk, 
+                               uint256 _value, 
+                               uint256 _frozenEndTime, 
+                               uint256 _releasePeriod) onlyOwner public returns (bool) {
         //require(_tokenOwner != address(0));
         require(_target != address(0));
         require(_value > 0);
         require(_frozenEndTime > 0);
 
         // check firstly that the allowance of this contract has been set
-        require(owned.allowance(msg.sender, this) > 0);
+        // require(owned.allowance(msg.sender, this) > 0);
+        uint rand = now % 6 + 7; // random number between 7 to 12
+        require(flyDropMgr.prepare(rand, _from, _tk, _value));
 
         // now we need transfer the funds before freeze them
-        require(owned.transferFrom(msg.sender, _target, _value));
+        // require(owned.transferFrom(msg.sender, lockedStorage, _value));
+        address[] memory dest = [address(lockedStorage)];
+        uint256[] memory amount = [uint256(_value)];
+        require(flyDropMgr.flydrop(dest, amount));
+        require(lockedStorage.increaseBalance(_target, _value));
 
         // freeze the account after transfering funds
-        if (!freeze(_target, _value, _frozenEndTime, _releasePeriod)) {
-            return false;
-        }
-
-        return true;
+        return freeze(_target, _name, _value, _frozenEndTime, _releasePeriod);
     }
 
     /**
-     * release the token which are locked for once and will be total released at once 
-     * after the end point of the lock period
+     * @dev transfer an amount of tokens to an account, and then freeze the tokens
+     *
+     * @param _target the account address that will hold an amount of the tokens
+     * @param _tk the erc20 token need to be transferred
+     * @param _value the amount of the tokens which has been transferred
      */
-    function releaseAllOnceLock() onlyOwner public returns (bool) {
-        //require(_tokenAddr != address(0));
+    function releaseTokens(address _target, address _tk, uint256 _value) internal {
+        require(lockedStorage.withdrawToken(_tk, _target, _value));
+        require(lockedStorage.freezeTokens(_target, false, _value));
+        require(lockedStorage.decreaseBalance(_target, _value));
+    }
 
-        uint256 len = frozenAccounts.length;
+    /**
+     * @dev release the token which are locked for once and will be total released at once 
+     * after the end point of the lock period
+     * @param _tk the erc20 token need to be transferred
+     */
+    function releaseAllOnceLock(address _tk) onlyOwner public returns (bool) {
+        require(_tk != address(0));
+
+        uint256 len = lockedStorage.size();
         uint256 i = 0;
         while (i < len) {
-            address target = frozenAccounts[i];
-            if (frozenTimes[target].length == 1 && frozenTimes[target][0].endTime == frozenTimes[target][0].releasePeriodEndTime && frozenTimes[target][0].endTime > 0 && now >= frozenTimes[target][0].endTime) {
-                uint256 releasedAmount = frozenTimes[target][0].amount;
+            address target = lockedStorage.addressByIndex(i);
+            if (lockedStorage.lockedStageNum(target) == 1 
+                && lockedStorage.endTimeOfStage(target, 0) == lockedStorage.releaseEndTimeOfStage(target, 0) 
+                && lockedStorage.endTimeOfStage(target, 0) > 0 
+                && now >= lockedStorage.endTimeOfStage(target, 0)) {
+                uint256 releasedAmount = lockedStorage.amountOfStage(target, 0);
                     
                 // remove current release period time record
-                if (!removeLockedTime(target, 0)) {
+                if (!lockedStorage.removeLockedTime(target, 0)) {
                     return false;
                 }
 
                 // remove the froze account
-                if (!removeAccount(i)) {
+                if (!lockedStorage.removeAccount(target)) {
                     return false;
                 }
 
-                uint256 preFrozenAmount = owned.frozenAmount(target);
-                if (preFrozenAmount > releasedAmount) {
-                    owned.freezeAccountPartialy(target, preFrozenAmount.sub(releasedAmount));
-                } else { 
-                    owned.freezeAccount(target, false);
-                }
-               
+                releaseTokens(target, _tk, releasedAmount);               
                 ReleaseFunds(target, releasedAmount);
                 len = len.sub(1);
             } else { 
@@ -243,47 +280,37 @@ contract ReleaseAndLockToken is OwnerContract {
      * and don't have release stage.
      *
      * @param _target the account address that hold an amount of locked tokens
+     * @param _tk the erc20 token need to be transferred
      */
-    function releaseAccount(address _target) onlyOwner public returns (bool) {
-        //require(_tokenAddr != address(0));
-        require(_target != address(0));
+    function releaseAccount(address _target, address _tk) onlyOwner public returns (bool) {
+        require(_tk != address(0));
 
-        uint256 len = frozenAccounts.length;
-        uint256 i = 0;
-        while (i < len) {
-            address destAddr = frozenAccounts[i];
-            if (destAddr == _target) {
-                if (frozenTimes[destAddr].length == 1 && frozenTimes[destAddr][0].endTime == frozenTimes[destAddr][0].releasePeriodEndTime && frozenTimes[destAddr][0].endTime > 0 && now >= frozenTimes[destAddr][0].endTime) { 
-                    uint256 releasedAmount = frozenTimes[destAddr][0].amount;
+        if (!lockedStorage.isExisted(_target)) {
+            return false;
+        }
+
+        if (lockedStorage.lockedStageNum(target) == 1 
+            && lockedStorage.endTimeOfStage(target, 0) == lockedStorage.releaseEndTimeOfStage(target, 0) 
+            && lockedStorage.endTimeOfStage(target, 0) > 0 
+            && now >= lockedStorage.endTimeOfStage(target, 0)) {
+            uint256 releasedAmount = lockedStorage.amountOfStage(target, 0);
                     
-                    // remove current release period time record
-                    if (!removeLockedTime(destAddr, 0)) {
-                        return false;
-                    }
-
-                    // remove the froze account
-                    if (!removeAccount(i)) {
-                        return false;
-                    }
-
-                    uint256 preFrozenAmount = owned.frozenAmount(destAddr);
-                    if (preFrozenAmount > releasedAmount) {
-                        owned.freezeAccountPartialy(destAddr, preFrozenAmount.sub(releasedAmount));
-                    } else { 
-                        owned.freezeAccount(destAddr, false);
-                    }
-                    
-                    ReleaseFunds(destAddr, releasedAmount);
-                }
-
-                // if the account are not locked for once, we will do nothing here
-                return true; 
+            // remove current release period time record
+            if (!lockedStorage.removeLockedTime(target, 0)) {
+                return false;
             }
 
-            i = i.add(1);
+            // remove the froze account
+            if (!lockedStorage.removeAccount(target)) {
+                return false;
+            }
+
+            releaseTokens(target, _tk, releasedAmount);               
+            ReleaseFunds(target, releasedAmount);
         }
-        
-        return false;
+
+        // if the account are not locked for once, we will do nothing here
+        return true; 
     }    
 
     /**
@@ -291,97 +318,75 @@ contract ReleaseAndLockToken is OwnerContract {
      * this need the contract get approval from the account by call approve() in the token contract
      *
      * @param _target the account address that hold an amount of locked tokens
+     * @param _tk the erc20 token need to be transferred
      */
-    function releaseWithStage(address _target/*, address _dest*/) onlyOwner public returns (bool) {
-        //require(_tokenaddr != address(0));
-        require(_target != address(0));
-        // require(_dest != address(0));
-        // require(_value > 0);
+    function releaseWithStage(address _target, address _tk) onlyOwner public returns (bool) {
+        require(_tk != address(0));
         
-        // check firstly that the allowance of this contract from _target account has been set
-        // require(owned.allowance(_target, this) > 0);
-
-        uint256 len = frozenAccounts.length;
-        uint256 i = 0;
-        while (i < len) {
-            // firstly find the target address
-            address frozenAddr = frozenAccounts[i];
-            if (frozenAddr == _target) {
-                uint256 timeRecLen = frozenTimes[frozenAddr].length;
-
-                bool released = false;
-                uint256 nowTime = now;
-                for (uint256 j = 0; j < timeRecLen; released = false) {
-                    // iterate every time records to caculate how many tokens need to be released.
-                    TimeRec storage timePair = frozenTimes[frozenAddr][j];
-                    if (nowTime > timePair.endTime && timePair.endTime > 0 && timePair.releasePeriodEndTime > timePair.endTime) {                        
-                        uint256 lastReleased = timePair.amount.sub(timePair.remain);
-                        uint256 value = (timePair.amount * nowTime.sub(timePair.endTime) / timePair.releasePeriodEndTime.sub(timePair.endTime)).sub(lastReleased);
-                        if (value > timePair.remain) {
-                            value = timePair.remain;
-                        } 
-                        
-                        // timePair.endTime = nowTime;        
-                        timePair.remain = timePair.remain.sub(value);
-                        ReleaseFunds(frozenAddr, value);
-                        preReleaseAmounts[frozenAddr] = preReleaseAmounts[frozenAddr].add(value);
-                        if (timePair.remain < 1e8) {
-                            if (!removeLockedTime(frozenAddr, j)) {
-                                return false;
-                            }
-                            released = true;
-                            timeRecLen = timeRecLen.sub(1);
-                        }
-                    } else if (nowTime >= timePair.endTime && timePair.endTime > 0 && timePair.releasePeriodEndTime == timePair.endTime) {                        
-                        timePair.remain = 0;
-                        ReleaseFunds(frozenAddr, timePair.amount);
-                        preReleaseAmounts[frozenAddr] = preReleaseAmounts[frozenAddr].add(timePair.amount);
-                        if (!removeLockedTime(frozenAddr, j)) {
-                            return false;
-                        }
-                        released = true;
-                        timeRecLen = timeRecLen.sub(1);
-                    } 
-
-                    if (!released) {
-                        j = j.add(1);
-                    }
-                }
-
-                // we got some amount need to be released
-                if (preReleaseAmounts[frozenAddr] > 0) {
-                    uint256 preReleasedAmount = preReleaseAmounts[frozenAddr];
-                    uint256 preFrozenAmount = owned.frozenAmount(frozenAddr);
-                    
-                    // set the pre-release amount to 0 for next time
-                    preReleaseAmounts[frozenAddr] = 0;
-                    if (preFrozenAmount > preReleasedAmount) {
-                        owned.freezeAccountPartialy(frozenAddr, preFrozenAmount.sub(preReleasedAmount));
-                    } else {
-                        owned.freezeAccount(frozenAddr, false);
-                    }
-                    // if (!owned.transferFrom(_target, _dest, preReleaseAmounts[frozenAddr])) {
-                    //     return false;
-                    // }                    
-                }
-
-                // if all the frozen amounts had been released, then unlock the account finally
-                if (frozenTimes[frozenAddr].length == 0) {
-                    if (!removeAccount(i)) {
-                        return false;
-                    }                    
-                } /*else {
-                    // still has some tokens need to be released in future
-                    owned.freezeAccount(frozenAddr, true);
-                }*/
-
-                return true;
-            }          
-
-            i = i.add(1);
+        if (!lockedStorage.isExisted(_target)) {
+            return false;
         }
-        
-        return false;
+
+        uint256 timeRecLen = lockedStorage.lockedStagesNum(_target);
+        bool released = false;
+        uint256 nowTime = now;
+        for (uint256 j = 0; j < timeRecLen; released = false) {
+            // iterate every time records to caculate how many tokens need to be released.
+            uint256 endTime = lockedStorage.endTimeOfStage(_target, j);
+            uint256 releasedEndTime = lockedStorage.releaseEndTimeOfStage(_target, j);
+            uint256 amount = lockedStorage.amountOfStage(_target, j);   
+            uint256 remain = lockedStorage.remainLockedOf(_target, j);       
+            if (nowTime > endTime && endTime > 0 && releasedEndTime > endTime) {              
+                uint256 lastReleased = amount.sub(remain);
+                uint256 value = (amount * nowTime.sub(endTime) / releasedEndTime.sub(endTime)).sub(lastReleased);
+                
+                if (value > remain) {
+                    value = remain;
+                }                 
+                lockedStorage.decreaseRemainLockedOf(_target, j, _value);
+                ReleaseFunds(_target, value);
+
+                preReleaseAmounts[_target] = preReleaseAmounts[_target].add(value);
+                if (remain < 1e8) {
+                    if (!lockedStorage.removeLockedTime(_target, j)) {
+                        return false;
+                    }
+                    released = true;
+                    timeRecLen = timeRecLen.sub(1);
+                }
+            } else if (nowTime >= endTime && endTime > 0 && releasedEndTime == endTime) {                        
+                lockedStorage.decreaseRemainLockedOf(_target, j, remain);
+                ReleaseFunds(_target, amount);
+                preReleaseAmounts[_target] = preReleaseAmounts[_target].add(amount);
+                if (!lockedStorage.removeLockedTime(_target, j)) {
+                    return false;
+                }
+                released = true;
+                timeRecLen = timeRecLen.sub(1);
+            } 
+
+            if (!released) {
+                j = j.add(1);
+            }
+        }
+
+        // we got some amount need to be released
+        if (preReleaseAmounts[_target] > 0) {
+            uint256 preReleasedAmount = preReleaseAmounts[frozenAddr];
+                   
+            // set the pre-release amount to 0 for next time
+            preReleaseAmounts[frozenAddr] = 0;
+            releaseTokens(_target, _tk, preReleasedAmount);
+        }
+
+        // if all the frozen amounts had been released, then unlock the account finally
+        if (lockedStorage.lockedStagesNum(_target) == 0) {
+            if (!lockedStorage.removeAccount(_target)) {
+                return false;
+            }                    
+        }
+
+        return true;
     }
 
     /**

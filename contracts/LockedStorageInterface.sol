@@ -32,6 +32,9 @@ interface ILockedStorage {
 
     // get the remain unrleased tokens of the locked stages of an account     
     function remainOfStage(address _target, uint _ind) external view returns (uint256);
+    
+    // get the remain unrleased tokens of the locked stages of an account  
+    function amountOfStage(address _target, uint _ind) external view returns (uint256);
 
     // get the remain releasing period end time of an account
     function releaseEndTimeOfStage(address _target, uint _ind) external view returns (uint256);
@@ -44,6 +47,12 @@ interface ILockedStorage {
 
     // add one account address for that wallet
     function addAccount(address _wallet, string _name, uint256 _value) external returns (bool); 
+
+    // add a time record of one account
+    function addLockedTime(address _target, 
+                           uint256 _value, 
+                           uint256 _frozenEndTime, 
+                           uint256 _releasePeriod) external returns (bool);
 
     // freeze or release the tokens that has been locked in the account address.
     function freezeTokens(address _wallet, bool _freeze, uint256 _value) external returns (bool);
@@ -65,6 +74,9 @@ interface ILockedStorage {
 
     // set the new released period end time of an account
     function setNewReleaseEndTime(address _target, uint256 _ind, uint256 _newReleaseEndTime) external returns (bool);
+
+    // decrease the remaining locked amount of an account
+    function decreaseRemainLockedOf(address _target, uint256 _ind, uint256 _value) external returns (bool);
 
     // withdraw tokens from this contract
     function withdrawToken(address _token, address _to, uint256 _value) external returns (bool);

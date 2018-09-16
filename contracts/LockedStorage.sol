@@ -102,6 +102,26 @@ contract LockedStorage is Withdrawable, Claimable {
     }
 
     /**
+     * @dev add a time record of one account
+     *
+     * @param _target the account that holds a list of time records which record the freeze period     
+     * @param _value the amount of the tokens
+     * @param _frozenEndTime the end time of the lock period, unit is second
+     * @param _releasePeriod the locking period, unit is second
+     */
+    function addLockedTime(address _target, 
+                           uint256 _value, 
+                           uint256 _frozenEndTime, 
+                           uint256 _releasePeriod) onlyOwner public returns (bool) {
+        require(_target != address(0));
+
+        TimeRec[] storage lockedTimes = frozenTimes[_target];
+        lockedTimes.push(TimeRec(_value, _value, _frozenEndTime, _frozenEndTime.add(_releasePeriod)));       
+        
+        return true;
+    }
+
+    /**
      * @dev remove a time records from the time records list of one account
      *
      * @param _target the account that holds a list of time records which record the freeze period
@@ -241,7 +261,7 @@ contract LockedStorage is Withdrawable, Claimable {
         require(_oldEndTime > 0 && _newEndTime > 0);
     
         if (isExisted(_target)) {
-            TimeRec storage timePair = frozenTimes[frozenAddr][_ind];
+            TimeRec storage timePair = frozenTimes[_target][_ind];
             timePair.endTime = _newEndTime;
 
             return true;
@@ -262,8 +282,27 @@ contract LockedStorage is Withdrawable, Claimable {
         require(_oldEndTime > 0 && _newReleaseEndTime > 0);
     
         if (isExisted(_target)) {
-            TimeRec storage timePair = frozenTimes[frozenAddr][_ind];
+            TimeRec storage timePair = frozenTimes[_target][_ind];
             timePair.releasePeriodEndTime = _newReleaseEndTime;
+
+            return true;
+        }
+
+        return false;
+    } 
+
+    /**
+     * @dev decrease the remaining locked amount of an account
+     *
+     * @param _target the owner of some amount of tokens
+     * @param _ind the stage index of the locked stage
+     */
+    function decreaseRemainLockedOf(address _target, uint256 _ind, uint256 _value) onlyOwner public returns (bool) {
+        require(_target != address(0));
+    
+        if (isExisted(_target)) {
+            TimeRec storage timePair = frozenTimes[_target][_ind];
+            timePair.remain = timePair.remain.sub(_value);
 
             return true;
         }
@@ -310,6 +349,23 @@ contract LockedStorage is Withdrawable, Claimable {
         if (isExisted(_target)) {
             TimeRec memory timePair = frozenTimes[_target][_ind];
             return timePair.remain; 
+        }
+
+        return 0;
+    }
+
+    /**
+     * @dev get the remain unrleased tokens of the locked stages of an account
+     *
+     * @param _target the owner of some amount of tokens
+     * @param _ind the stage index of the locked stage
+     */
+    function amountOfStage(address _target, uint _ind) public view returns (uint256) {
+        require(_target != address(0));
+        
+        if (isExisted(_target)) {
+            TimeRec memory timePair = frozenTimes[_target][_ind];
+            return timePair.amount; 
         }
 
         return 0;
