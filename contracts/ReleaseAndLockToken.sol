@@ -393,37 +393,28 @@ contract ReleaseAndLockToken is OwnerContract {
      * @dev set the new endtime of the released time of an account
      *
      * @param _target the owner of some amount of tokens
-     * @param _oldEndTime the original endtime for the lock period
+     * @param _oldEndTime the original endtime for the lock period, unit is second
+     * @param _oldDuration the original duration time for the released period, unit is second
      * @param _newEndTime the new endtime for the lock period
      */
-    function setNewEndtime(address _target, uint256 _oldEndTime, uint256 _newEndTime) onlyOwner public returns (bool) {
+    function setNewEndtime(address _target, uint256 _oldEndTime, uint256 _oldDuration, uint256 _newEndTime) onlyOwner public returns (bool) {
         require(_target != address(0));
         require(_oldEndTime > 0 && _newEndTime > 0);
+        
+        if (!lockedStorage.isExisted(_target)) {
+            return false;
+        }
 
-        uint256 len = frozenAccounts.length;
-        uint256 i = 0;
-        while (i < len) {
-            address frozenAddr = frozenAccounts[i];
-            if (frozenAddr == _target) {
-                uint256 timeRecLen = frozenTimes[frozenAddr].length;
-                uint256 j = 0;
-                while (j < timeRecLen) {
-                    TimeRec storage timePair = frozenTimes[frozenAddr][j];
-                    if (_oldEndTime == timePair.endTime) {
-                        uint256 duration = timePair.releasePeriodEndTime.sub(timePair.endTime);
-                        timePair.endTime = _newEndTime;
-                        timePair.releasePeriodEndTime = timePair.endTime.add(duration);                        
-                        
-                        return true;
-                    }
-
-                    j = j.add(1);
-                }
-
-                return false;
+        uint256 timeRecLen = lockedStorage.lockedStagesNum(_target);
+        uint256 j = 0;
+        while (j < timeRecLen) {
+            uint256 endTime = lockedStorage.endTimeOfStage(_target, j);
+            uint256 releasedEndTime = lockedStorage.releaseEndTimeOfStage(_target, j);
+            if (_oldEndTime == endTime && _oldDuration == releasedEndTime.sub(endTime)) {
+                return lockedStorage.changeEndTime(_target, j, _newEndTime);
             }
 
-            i = i.add(1);
+            j = j.add(1);
         }
 
         return false;
@@ -434,33 +425,27 @@ contract ReleaseAndLockToken is OwnerContract {
      *
      * @param _target the owner of some amount of tokens
      * @param _origEndTime the original endtime for the lock period
+     * @param _origDuration the original duration time for the released period, unit is second
      * @param _duration the new releasing period
      */
-    function setNewReleasePeriod(address _target, uint256 _origEndTime, uint256 _duration) onlyOwner public returns (bool) {
+    function setNewReleasePeriod(address _target, uint256 _origEndTime, uint256 _origDuration, uint256 _newDuration) onlyOwner public returns (bool) {
         require(_target != address(0));
-        require(_origEndTime > 0 && _duration > 0);
+        require(_origEndTime > 0);
+        
+        if (!lockedStorage.isExisted(_target)) {
+            return false;
+        }
 
-        uint256 len = frozenAccounts.length;
-        uint256 i = 0;
-        while (i < len) {
-            address frozenAddr = frozenAccounts[i];
-            if (frozenAddr == _target) {
-                uint256 timeRecLen = frozenTimes[frozenAddr].length;
-                uint256 j = 0;
-                while (j < timeRecLen) {
-                    TimeRec storage timePair = frozenTimes[frozenAddr][j];
-                    if (_origEndTime == timePair.endTime) {
-                        timePair.releasePeriodEndTime = _origEndTime.add(_duration);
-                        return true;
-                    }
-
-                    j = j.add(1);
-                }
-
-                return false;
+        uint256 timeRecLen = lockedStorage.lockedStagesNum(_target);
+        uint256 j = 0;
+        while (j < timeRecLen) {
+            uint256 endTime = lockedStorage.endTimeOfStage(_target, j);
+            uint256 releasedEndTime = lockedStorage.releaseEndTimeOfStage(_target, j);
+            if (_origEndTime == endTime && _origDuration == releasedEndTime.sub(endTime)) {
+                return lockedStorage.setNewReleaseEndTime(_target, j, _origEndTime.add(_newDuration));
             }
 
-            i = i.add(1);
+            j = j.add(1);
         }
 
         return false;
@@ -529,15 +514,15 @@ contract ReleaseAndLockToken is OwnerContract {
      * @dev release the locked tokens owned by a number of accounts
      *
      * @param _targets the accounts list that hold an amount of locked tokens 
+     * @param _tk the erc20 token need to be transferred
      */
-    function releaseMultiAccounts(address[] _targets) onlyOwner public returns (bool) {
-        //require(_tokenAddr != address(0));
+    function releaseMultiAccounts(address[] _targets, address _tk) onlyOwner public returns (bool) {
         require(_targets.length != 0);
 
         bool res = false;
         uint256 i = 0;
         while (i < _targets.length) {
-            res = releaseAccount(_targets[i]) || res;
+            res = releaseAccount(_targets[i], _tk) || res;
             i = i.add(1);
         }
 
@@ -548,16 +533,15 @@ contract ReleaseAndLockToken is OwnerContract {
      * @dev release the locked tokens owned by an account
      *
      * @param _targets the account addresses list that hold amounts of locked tokens
+     * @param _tk the erc20 token need to be transferred
      */
-    function releaseMultiWithStage(address[] _targets) onlyOwner public returns (bool) {
+    function releaseMultiWithStage(address[] _targets, address _tk) onlyOwner public returns (bool) {
         require(_targets.length != 0);
         
         bool res = false;
         uint256 i = 0;
         while (i < _targets.length) {
-            require(_targets[i] != address(0));
-
-            res = releaseWithStage(_targets[i]) || res; // as long as there is one true transaction, then the result will be true
+            res = releaseWithStage(_targets[i], _tk) || res; // as long as there is one true transaction, then the result will be true
             i = i.add(1);
         }
 
@@ -568,21 +552,23 @@ contract ReleaseAndLockToken is OwnerContract {
      * @dev freeze multiple of the accounts
      *
      * @param _targets the owners of some amount of tokens
+     * @param _names the user names of the _targets
      * @param _values the amounts of the tokens
      * @param _frozenEndTimes the list of the end time of the lock period, unit is second
      * @param _releasePeriods the list of the locking period, unit is second
      */
-    function freezeMulti(address[] _targets, uint256[] _values, uint256[] _frozenEndTimes, uint256[] _releasePeriods) onlyOwner public returns (bool) {
+    function freezeMulti(address[] _targets, string[] names, uint256[] _values, uint256[] _frozenEndTimes, uint256[] _releasePeriods) onlyOwner public returns (bool) {
         require(_targets.length != 0);
+        require(_names.length != 0);
         require(_values.length != 0);
         require(_frozenEndTimes.length != 0);
         require(_releasePeriods.length != 0);
-        require(_targets.length == _values.length && _values.length == _frozenEndTimes.length && _frozenEndTimes.length == _releasePeriods.length);
+        require(_targets.length == names.length && names.length == _values.length && _values.length == _frozenEndTimes.length && _frozenEndTimes.length == _releasePeriods.length);
 
         bool res = true;
         for (uint256 i = 0; i < _targets.length; i = i.add(1)) {
-            require(_targets[i] != address(0));
-            res = freeze(_targets[i], _values[i], _frozenEndTimes[i], _releasePeriods[i]) && res; 
+            // as long as one transaction failed, then the result will be failure
+            res = freeze(_targets[i], names[i], _values[i], _frozenEndTimes[i], _releasePeriods[i]) && res; 
         }
 
         return res;
@@ -592,21 +578,24 @@ contract ReleaseAndLockToken is OwnerContract {
      * @dev transfer a list of amounts of tokens to a list of accounts, and then freeze the tokens
      *
      * @param _targets the account addresses that will hold a list of amounts of the tokens
+     * @param _names the user names of the _targets
+     * @param _tk the erc20 token need to be transferred
      * @param _values the amounts of the tokens which have been transferred
      * @param _frozenEndTimes the end time list of the locked periods, unit is second
      * @param _releasePeriods the list of locking periods, unit is second
      */
-    function transferAndFreezeMulti(address[] _targets, uint256[] _values, uint256[] _frozenEndTimes, uint256[] _releasePeriods) onlyOwner public returns (bool) {
+    function transferAndFreezeMulti(address[] _targets, strings[] _names, address _tk, uint256[] _values, uint256[] _frozenEndTimes, uint256[] _releasePeriods) onlyOwner public returns (bool) {
         require(_targets.length != 0);
+        require(_names.length != 0);
         require(_values.length != 0);
         require(_frozenEndTimes.length != 0);
         require(_releasePeriods.length != 0);
-        require(_targets.length == _values.length && _values.length == _frozenEndTimes.length && _frozenEndTimes.length == _releasePeriods.length);
+        require(_targets.length == names.length && names.length == _values.length && _values.length == _frozenEndTimes.length && _frozenEndTimes.length == _releasePeriods.length);
 
         bool res = true;
         for (uint256 i = 0; i < _targets.length; i = i.add(1)) {
-            require(_targets[i] != address(0));
-            res = transferAndFreeze(_targets[i], _values[i], _frozenEndTimes[i], _releasePeriods[i]) && res; 
+            // as long as one transaction failed, then the result will be failure
+            res = transferAndFreeze(_targets[i], names[i], _tk, _values[i], _frozenEndTimes[i], _releasePeriods[i]) && res; 
         }
 
         return res;
