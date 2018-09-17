@@ -3,7 +3,7 @@ pragma solidity ^0.4.23;
 
 import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import "openzeppelin-solidity/contracts/ownership/DelayedClaimable.sol";
-import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
+import "openzeppelin-solidity/contracts/access/rbac/RBAC.sol";
 import "./StringUtils.sol";
 
 

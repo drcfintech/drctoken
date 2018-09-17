@@ -1,9 +1,14 @@
-var Migrations = artifacts.require("./Migrations.sol");
+var Migrations = artifacts.require("Migrations");
 
-module.exports = function(deployer) {
-  deployer.deploy(Migrations, {gas: '5725218', gasPrice: '4000000000'}).then(
-    function(instance) {
-      console.log(instance);
-    }
-  );
+const Web3 = require("web3");
+const Promise = require("bluebird");
+const walletConfig = require("../config/walletConfig.json");
+const contractConfig = require('../config/compileContract.json');
+
+
+module.exports = function (deployer) {
+  deployer.deploy(Migrations, {
+    gas: contractConfig.contracts[0].requiredGasLimit, //'6700000',
+    gasPrice: contractConfig.gasPrice
+  });
 };

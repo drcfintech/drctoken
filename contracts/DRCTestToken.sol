@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
@@ -29,7 +29,7 @@ contract DRCTestToken is BurnableToken, MintableToken, PausableToken {
      *
      * initial balance is set. 
      */
-    function DRCTestToken() public {
+    constructor() public {
         totalSupply_ = INITIAL_SUPPLY;
         balances[msg.sender] = totalSupply_;
     }

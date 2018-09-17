@@ -44,7 +44,7 @@ contract Poweruser is DelayedClaimable, RBAC {
 
   /**
    * @dev Add a new account address as power user.
-   * @param _newSuperuser The address to be as a power user.
+   * @param _newPoweruser The address to be as a power user.
    */
   function addPoweruser(address _newPoweruser) public onlyOwner {
     require(_newPoweruser != address(0));
@@ -53,7 +53,7 @@ contract Poweruser is DelayedClaimable, RBAC {
 
   /**
    * @dev Remove a new account address from power user list.
-   * @param _oldSuperuser The address to be as a power user.
+   * @param _oldPoweruser The address to be as a power user.
    */
   function removePoweruser(address _oldPoweruser) public onlyOwner {
     require(_oldPoweruser != address(0));

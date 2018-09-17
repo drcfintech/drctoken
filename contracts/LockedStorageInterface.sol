@@ -70,7 +70,7 @@ interface ILockedStorage {
     function removeLockedTime(address _target, uint _ind) external returns (bool);
 
     // set the new endtime of the released time of an account
-    function changeEndtime(address _target, uint256 _ind, uint256 _newEndTime) external returns (bool);
+    function changeEndTime(address _target, uint256 _ind, uint256 _newEndTime) external returns (bool);
 
     // set the new released period end time of an account
     function setNewReleaseEndTime(address _target, uint256 _ind, uint256 _newReleaseEndTime) external returns (bool);

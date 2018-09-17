@@ -1,8 +1,8 @@
 pragma solidity ^0.4.18;
 
 
-import "zeppelin-solidity/contracts/ownership/DelayedClaimable.sol";
-import 'zeppelin-solidity/contracts/math/SafeMath.sol';
+import "openzeppelin-solidity/contracts/ownership/DelayedClaimable.sol";
+import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import './SimpleFlyDropToken.sol';
 import './PowerUser.sol';
 

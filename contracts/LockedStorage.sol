@@ -19,7 +19,6 @@ contract LockedStorage is Withdrawable, Claimable {
         string name;
         uint256 balance;
         uint256 frozen;
-        // address walletAddr;
     }
 
     // record lock time period and related token amount
@@ -34,9 +33,8 @@ contract LockedStorage is Withdrawable, Claimable {
     mapping (address => bool) public frozenAccounts;
     address[] accountAddresses;
     mapping (address => TimeRec[]) frozenTimes;
-    mapping (address => uint256) preReleaseAmounts;
 
-    // event ReleaseFunds(address _target, uint256 _amount);
+    uint256 public size;
 
     
     /**
@@ -94,7 +92,7 @@ contract LockedStorage is Withdrawable, Claimable {
         require(_wallet != address(0));
         
         delete accounts[_wallet];
-        delete frozenDeposits[_wallet];        
+        delete frozenAccounts[_wallet];        
         removeAccountAddress(_wallet);
 
         size = size.sub(1);
@@ -151,7 +149,7 @@ contract LockedStorage is Withdrawable, Claimable {
      * @param _value the amount that the balance will be increased
 	 */
     function increaseBalance(address _wallet, uint256 _value) public returns (bool) {
-        require(_deposit != address(0));
+        require(_wallet != address(0));
         uint256 _balance = accounts[_wallet].balance;
         accounts[_wallet].balance = _balance.add(_value);
         return true;
@@ -164,7 +162,7 @@ contract LockedStorage is Withdrawable, Claimable {
      * @param _value the amount that the balance will be decreased
 	 */
     function decreaseBalance(address _wallet, uint256 _value) public returns (bool) {
-        require(_deposit != address(0));
+        require(_wallet != address(0));
         uint256 _balance = accounts[_wallet].balance;
         accounts[_wallet].balance = _balance.sub(_value);
         return true;
@@ -181,7 +179,7 @@ contract LockedStorage is Withdrawable, Claimable {
         require(_wallet != address(0));
         // require(_value <= balanceOf(_deposit));
         
-        frozenDeposits[_wallet] = _freeze;
+        frozenAccounts[_wallet] = _freeze;
         uint256 _frozen = accounts[_wallet].frozen;
         uint256 _balance = accounts[_wallet].balance;
         uint256 freezeAble = _balance.sub(_frozen);
@@ -256,9 +254,9 @@ contract LockedStorage is Withdrawable, Claimable {
      * @param _ind the stage index of the locked stage
      * @param _newEndTime the new endtime for the lock period
      */
-    function changeEndtime(address _target, uint256 _ind, uint256 _newEndTime) onlyOwner public returns (bool) {
+    function changeEndTime(address _target, uint256 _ind, uint256 _newEndTime) onlyOwner public returns (bool) {
         require(_target != address(0));
-        require(_oldEndTime > 0 && _newEndTime > 0);
+        require(_newEndTime > 0);
     
         if (isExisted(_target)) {
             TimeRec storage timePair = frozenTimes[_target][_ind];
@@ -279,7 +277,7 @@ contract LockedStorage is Withdrawable, Claimable {
      */
     function setNewReleaseEndTime(address _target, uint256 _ind, uint256 _newReleaseEndTime) onlyOwner public returns (bool) {
         require(_target != address(0));
-        require(_oldEndTime > 0 && _newReleaseEndTime > 0);
+        require(_newReleaseEndTime > 0);
     
         if (isExisted(_target)) {
             TimeRec storage timePair = frozenTimes[_target][_ind];
