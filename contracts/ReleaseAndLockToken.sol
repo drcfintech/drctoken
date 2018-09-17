@@ -301,7 +301,7 @@ contract ReleaseAndLockToken is OwnerContract {
                 emit ReleaseFunds(_target, value);
 
                 preReleaseAmounts[frozenAddr] = preReleaseAmounts[frozenAddr].add(value);
-                if (remain < 1e8) {
+                if (lockedStorage.remainLockedOf(frozenAddr, j) < 1e8) {
                     if (!lockedStorage.removeLockedTime(frozenAddr, j)) {
                         return false;
                     }
