@@ -39,9 +39,6 @@ interface ILockedStorage {
     // get the remain releasing period end time of an account
     function releaseEndTimeOfStage(address _target, uint _ind) external view returns (uint256);
 
-    // get remain amount of a locked stage of the target address
-    function remainLockedOf(address _target, uint256 _ind) external view returns (uint256);
-
     // get the frozen amount of the account address
     function size() external view returns (uint256);
 
