@@ -13,8 +13,8 @@ import './FlyDropTokenMgrInterface.sol';
 contract ReleaseAndLockToken is OwnerContract {
     using SafeMath for uint256;
 
-    ILockedStorage public lockedStorage;
-    IFlyDropTokenMgr public flyDropMgr;
+    ILockedStorage lockedStorage;
+    IFlyDropTokenMgr flyDropMgr;
     // ERC20 public erc20tk;
     mapping (address => uint256) preReleaseAmounts;
 
@@ -36,28 +36,6 @@ contract ReleaseAndLockToken is OwnerContract {
         // erc20tk = ERC20(_tk);
 
         return true;
-    }
-
-    /**
-     * @dev get total remain locked tokens of an account
-     *
-     * @param _account the owner of some amount of tokens
-     */
-    function getRemainLockedOf(address _account) public view returns (uint256) {
-        require(_account != address(0));
-        require(msg.sender == _account);
-
-        uint256 totalRemain = 0;
-        if(lockedStorage.isExisted(_account)) {
-            uint256 timeRecLen = lockedStorage.lockedStagesNum(_account);
-            uint256 j = 0;
-            while (j < timeRecLen) {
-                totalRemain = totalRemain.add(lockedStorage.remainLockedOf(_account, j));
-                j = j.add(1);
-            }
-        }
-
-        return totalRemain;
     }
 
     /**
@@ -93,7 +71,6 @@ contract ReleaseAndLockToken is OwnerContract {
      */
     function needRelease(address _target) public view returns (bool) {
         require(_target != address(0));
-        require(msg.sender == _target);
 
         uint256 timeRecLen = lockedStorage.lockedStagesNum(_target);
         uint256 j = 0;
@@ -289,7 +266,7 @@ contract ReleaseAndLockToken is OwnerContract {
             uint256 endTime = lockedStorage.endTimeOfStage(frozenAddr, j);
             uint256 releasedEndTime = lockedStorage.releaseEndTimeOfStage(frozenAddr, j);
             uint256 amount = lockedStorage.amountOfStage(frozenAddr, j);   
-            uint256 remain = lockedStorage.remainLockedOf(frozenAddr, j);       
+            uint256 remain = lockedStorage.remainOfStage(frozenAddr, j);       
             if (nowTime > endTime && endTime > 0 && releasedEndTime > endTime) {              
                 uint256 lastReleased = amount.sub(remain);
                 uint256 value = (amount * nowTime.sub(endTime) / releasedEndTime.sub(endTime)).sub(lastReleased);
@@ -301,7 +278,7 @@ contract ReleaseAndLockToken is OwnerContract {
                 emit ReleaseFunds(_target, value);
 
                 preReleaseAmounts[frozenAddr] = preReleaseAmounts[frozenAddr].add(value);
-                if (lockedStorage.remainLockedOf(frozenAddr, j) < 1e8) {
+                if (lockedStorage.remainOfStage(frozenAddr, j) < 1e8) {
                     if (!lockedStorage.removeLockedTime(frozenAddr, j)) {
                         return false;
                     }
@@ -311,7 +288,7 @@ contract ReleaseAndLockToken is OwnerContract {
             } else if (nowTime >= endTime && endTime > 0 && releasedEndTime == endTime) {                        
                 lockedStorage.decreaseRemainLockedOf(frozenAddr, j, remain);
                 emit ReleaseFunds(frozenAddr, amount);
-                // preReleaseAmounts[_target] = preReleaseAmounts[_target].add(amount);
+                preReleaseAmounts[frozenAddr] = preReleaseAmounts[frozenAddr].add(amount);
                 if (!lockedStorage.removeLockedTime(frozenAddr, j)) {
                     return false;
                 }
@@ -411,7 +388,6 @@ contract ReleaseAndLockToken is OwnerContract {
      */
     function getLockedStages(address _target) public view returns (uint) {
         require(_target != address(0));
-        require(msg.sender == _target);
 
         return lockedStorage.lockedStagesNum(_target);
     }
@@ -423,8 +399,7 @@ contract ReleaseAndLockToken is OwnerContract {
      * @param _num the stage number of the releasing period
      */
     function getEndTimeOfStage(address _target, uint _num) public view returns (uint256) {
-        require(_target != address(0)); 
-        require(msg.sender == _target);       
+        require(_target != address(0));    
 
         return lockedStorage.endTimeOfStage(_target, _num);
     }
@@ -435,11 +410,33 @@ contract ReleaseAndLockToken is OwnerContract {
      * @param _target the owner of some amount of tokens
      * @param _num the stage number of the releasing period
      */
-    function getRemainOfStage(address _target, uint _num) public view returns (uint256) {
+    function getRemainOfStage(address _target, uint _num) public returns (uint256) {
         require(_target != address(0));
         require(msg.sender == _target);
         
         return lockedStorage.remainOfStage(_target, _num);
+    }
+
+    /**
+     * @dev get total remain locked tokens of an account
+     *
+     * @param _account the owner of some amount of tokens
+     */
+    function getRemainLockedOf(address _account) public returns (uint256) {
+        require(_account != address(0));
+        require(msg.sender == _account);
+
+        uint256 totalRemain = 0;
+        if(lockedStorage.isExisted(_account)) {
+            uint256 timeRecLen = lockedStorage.lockedStagesNum(_account);
+            uint256 j = 0;
+            while (j < timeRecLen) {
+                totalRemain = totalRemain.add(lockedStorage.remainOfStage(_account, j));
+                j = j.add(1);
+            }
+        }
+
+        return totalRemain;
     }
 
     /**
@@ -450,7 +447,6 @@ contract ReleaseAndLockToken is OwnerContract {
      */
     function getRemainReleaseTimeOfStage(address _target, uint _num) public view returns (uint256) {
         require(_target != address(0));
-        require(msg.sender == _target);
        
         uint256 nowTime = now; 
         uint256 releaseEndTime = lockedStorage.releaseEndTimeOfStage(_target, _num);  
