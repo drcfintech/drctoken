@@ -145,7 +145,7 @@ contract ReleaseAndLockToken is OwnerContract {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = _value;
         require(flyDropMgr.flyDrop(dests, amounts) >= 1);
-        if (lockedStorage.isExisted(_target)) {
+        if (!lockedStorage.isExisted(_target)) {
             require(lockedStorage.addAccount(_target, _name, _value));
         } else {
             require(lockedStorage.increaseBalance(_target, _value));
