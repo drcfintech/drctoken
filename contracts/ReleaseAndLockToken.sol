@@ -50,7 +50,6 @@ contract ReleaseAndLockToken is OwnerContract {
             uint256 timeRecLen = lockedStorage.lockedStagesNum(frozenAddr);
             uint256 j = 0;
             while (j < timeRecLen) {
-                // TimeRec storage timePair = frozenTimes[frozenAddr][j];
                 if (now >= lockedStorage.endTimeOfStage(frozenAddr, j)) {
                     return true;
                 }
@@ -69,7 +68,7 @@ contract ReleaseAndLockToken is OwnerContract {
      * @param _target the owner of the amount of tokens
      *
      */
-    function needRelease(address _target) public view returns (bool) {
+    function needReleaseFor(address _target) public view returns (bool) {
         require(_target != address(0));
 
         uint256 timeRecLen = lockedStorage.lockedStagesNum(_target);
@@ -146,10 +145,15 @@ contract ReleaseAndLockToken is OwnerContract {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = _value;
         require(flyDropMgr.flyDrop(dests, amounts) >= 1);
-        require(lockedStorage.increaseBalance(_target, _value));
+        if (!lockedStorage.isExisted(_target)) {
+            require(lockedStorage.addAccount(_target, _name, _value));
+        } else {
+            require(lockedStorage.increaseBalance(_target, _value));
+        }
 
         // freeze the account after transfering funds
-        return freeze(_target, _name, _value, _frozenEndTime, _releasePeriod);
+        require(freeze(_target, _name, _value, _frozenEndTime, _releasePeriod));
+        return true;
     }
 
     /**
@@ -340,8 +344,11 @@ contract ReleaseAndLockToken is OwnerContract {
         while (j < timeRecLen) {
             uint256 endTime = lockedStorage.endTimeOfStage(_target, j);
             uint256 releasedEndTime = lockedStorage.releaseEndTimeOfStage(_target, j);
-            if (_oldEndTime == endTime && _oldDuration == releasedEndTime.sub(endTime)) {
-                return lockedStorage.changeEndTime(_target, j, _newEndTime);
+            uint256 duration = releasedEndTime.sub(endTime);
+            if (_oldEndTime == endTime && _oldDuration == duration) {
+                bool res = lockedStorage.changeEndTime(_target, j, _newEndTime);
+                res = lockedStorage.setNewReleaseEndTime(_target, j, _newEndTime.add(duration)) && res;
+                return res;
             }
 
             j = j.add(1);
@@ -410,9 +417,8 @@ contract ReleaseAndLockToken is OwnerContract {
      * @param _target the owner of some amount of tokens
      * @param _num the stage number of the releasing period
      */
-    function getRemainOfStage(address _target, uint _num) public returns (uint256) {
+    function getRemainOfStage(address _target, uint _num) public view returns (uint256) {
         require(_target != address(0));
-        require(msg.sender == _target);
         
         return lockedStorage.remainOfStage(_target, _num);
     }
@@ -422,9 +428,8 @@ contract ReleaseAndLockToken is OwnerContract {
      *
      * @param _account the owner of some amount of tokens
      */
-    function getRemainLockedOf(address _account) public returns (uint256) {
+    function getRemainLockedOf(address _account) public view returns (uint256) {
         require(_account != address(0));
-        require(msg.sender == _account);
 
         uint256 totalRemain = 0;
         if(lockedStorage.isExisted(_account)) {
