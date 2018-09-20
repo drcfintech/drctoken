@@ -145,10 +145,15 @@ contract ReleaseAndLockToken is OwnerContract {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = _value;
         require(flyDropMgr.flyDrop(dests, amounts) >= 1);
-        require(lockedStorage.increaseBalance(_target, _value));
+        if (lockedStorage.isExisted(_target)) {
+            require(lockedStorage.addAccount(_target, _name, _value));
+        } else {
+            require(lockedStorage.increaseBalance(_target, _value));
+        }
 
         // freeze the account after transfering funds
-        return freeze(_target, _name, _value, _frozenEndTime, _releasePeriod);
+        require(freeze(_target, _name, _value, _frozenEndTime, _releasePeriod));
+        return true;
     }
 
     /**
