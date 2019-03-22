@@ -230,8 +230,9 @@ const sendTransaction = (rawTx) => {
     .on('error', (err, receipt) => {
       console.error('catch an error after sendTransaction... ', err);
       if (err) {
-        if (err.message.includes('not mined within 50 blocks')) {
-          console.log("met error of not mined within 50 blocks...");
+        if (err.message.includes('not mined within 50 blocks') 
+            || err.message.includes('not mined within750 seconds')) {
+          console.log("met error of not mined within 50 blocks or 750 seconds...");
           if (receipt) {
             console.log('the real tx has already got the receipt: ', receipt);
             return resolve(finalReceipt(receipt));
