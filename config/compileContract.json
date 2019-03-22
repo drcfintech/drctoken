@@ -1,1 +1,16 @@
-{"contracts":[{"name":"Migrations","requiredGasLimit":230115},{"name":"FlyDropTokenMgr","requiredGasLimit":1640334},{"name":"LockedStorage","requiredGasLimit":1917563},{"name":"ReleaseAndLockToken","requiredGasLimit":5127572}],"gasPrice":"1100000000"}
+{
+    "contracts": [{
+        "name": "Migrations",
+        "requiredGasLimit": 230115
+    }, {
+        "name": "FlyDropTokenMgr",
+        "requiredGasLimit": 1640334
+    }, {
+        "name": "LockedStorage",
+        "requiredGasLimit": 1917563
+    }, {
+        "name": "ReleaseAndLockToken",
+        "requiredGasLimit": 5282020
+    }],
+    "gasPrice": "1100000000"
+}
