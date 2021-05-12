@@ -22,7 +22,7 @@
     "event-stream": "^3.3.6",
     "koa": "^2.5.3",
     "node-rsa": "^1.0.1",
-    "nodemailer": "^4.6.8",
+    "nodemailer": "^6.4.16",
     "nodemon": "^1.18.4",
     "openzeppelin-solidity": "^1.12.0",
     "promise": "^8.0.2",
